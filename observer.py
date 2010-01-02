@@ -1,19 +1,21 @@
-#subclass this to make observable objects which call their observers "update()" method
-class Subject:
+class Observable:
+    '''Implement observer pattern'''
+
     def __init__(self):
-        self._observers = []
+        self.listeners = []
 
-    def attach(self, observer):
-        if not observer in self._observers:
-            self._observers.append(observer)
+    def register_listener(self, listener):
+        self.listeners.append(listener) #this object has synasthaesia
 
-    def detach(self, observer):
+    def remove_listener(self, listener):
         try:
-            self._observers.remove(observer)
+            self.listeners.remove(listener)
         except ValueError:
             pass
 
-    def notify(self, modifier=None):
-        for observer in self._observers:
-            if modifier != observer:
-                observer.update(self)
+    def notify(self, *args):
+        for i in self.listeners:
+            if args:
+                i(args)
+            else:
+                i()
