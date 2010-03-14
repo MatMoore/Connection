@@ -1,5 +1,5 @@
 #Game of go
-from observer import Subject
+from observer import Observable
 import string
 import rules
 import geometry
