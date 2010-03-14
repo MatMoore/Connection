@@ -17,7 +17,7 @@ NB: Grid/lattice coordinates should all be integers. They are not intended to co
 # 4D: ???
 from itertools import izip
 import sys
-from observer import observable
+from observer import Observable
 
 class Grid(Observable):
 	'''A representation of a 2D grid with each point holding some value.
@@ -44,12 +44,12 @@ class Grid(Observable):
 				self.points[(lx+bx, ly+by)] = default_value
 				self.connections[(lx+bx, ly+by)] = []
 
-				xmin = min(xmin, lx+bx)
-				ymin = min(ymin, ly+by)
-				ymax = max(ymax, ly+by)
-				xmax = max(xmax, lx+bx)
+				self.xmin = min(self.xmin, lx+bx)
+				self.ymin = min(self.ymin, ly+by)
+				self.ymax = max(self.ymax, ly+by)
+				self.xmax = max(self.xmax, lx+bx)
 
-		#Now connect the points
+		#now connect the points
 		for lx,ly in lattice.items():
 
 			try:
@@ -60,10 +60,10 @@ class Grid(Observable):
 					if a in self.points and b in self.points:
 						self.connections[a].append(b)
 						self.connections[b].append(a)
-					else:
-						print 'Missing points for connection '+str(a)+'-'+str(b)
-						if a not in self.points: print a
-						if b not in self.points: print b
+#					else:
+						#print 'Missing points for connection '+str(a)+'-'+str(b)
+						#if a not in self.points: print a
+						#if b not in self.points: print b
 			except KeyError:
 				raise Exception('Invalid connections')
 
@@ -92,14 +92,14 @@ class Grid(Observable):
 		except KeyError:
 			raise Exception('Bad grid coordinates')
 
-	def points(self):
+	def get_points(self):
 		return self.points.iteritems()
 
-	def connections(self):
+	def get_connections(self):
 		return self.connections.iteritems()
 
 	def size(self):
-		return xmin,ymin,xmax,ymax
+		return self.xmin,self.ymin,self.xmax,self.ymax
 
 class RectangularGrid(Grid):
 	'''A rectangular grid. Aspect ratio should be a natural number (horizontal spacing >= vertical spacing)'''
@@ -108,7 +108,7 @@ class RectangularGrid(Grid):
 		aspect_ratio = int(aspect_ratio) #no floats please!
 		lattice = RectangularLattice(width, height, aspect_ratio)
 		basis = ((0, 0),)
-		connections = ((0, 0, 1, 0), (0, 0, 0, 1))
+		connections = ((0, 0, 1*aspect_ratio, 0), (0, 0, 0, 1))
 		Grid.__init__(self, lattice, basis, connections)
 
 class FoldedGrid(RectangularGrid):
@@ -154,7 +154,7 @@ class FoldedGrid(RectangularGrid):
 			for sideA, sideB in reverse_joins:
 				#This time the second side is reversed!
 				for c1, c2 in izip(sides[sideA], reversed(sides[sideB])):
-					print str(c1) + '-' + str(c2)
+					#print str(c1) + '-' + str(c2)
 					self.connections[c1].append(c2)
 					self.connections[c2].append(c1)
 
@@ -165,12 +165,12 @@ class FoldedGrid(RectangularGrid):
 class RectangularLattice:
 	'''List of coordinates of points arranged in a grid'''
 
-	def __init__(self, width, height, aspect_ratio, scale=1):
+	def __init__(self, width, height, aspect_ratio=1):
 		aspect_ratio = int(aspect_ratio) #no floats please
 		self.points = []
 		for i in range(width):
+			i *= aspect_ratio
 			for j in range(height):
-				j *= aspect_ratio
 				self.points.append((i,j))
 
 	def items(self):
@@ -203,7 +203,7 @@ class GridViewPygame:
 
 	def draw(self, *args):
 		'''Draw the grid'''
-		print 'redrawing'
+		#print 'redrawing'
 		scale = self.scale
 		self.surface.fill((255,255,255))
 
@@ -249,7 +249,7 @@ class GridViewPygame:
 	def onClick(self, pos):
 		'''Highlight the nearest point'''
 		pos = self.board_to_grid(pos)
-		print pos
+		#print pos
 		self.highlighted = pos
 		self.draw(False,True)
 
