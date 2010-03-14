@@ -1,4 +1,9 @@
 from copy import copy,deepcopy
+from observer import Observable
+from geometry import RectangularGrid
+
+class BoardError(Exception):
+	'''Exceptions thrown on invalid board operations'''
 
 class NonExistantPointError(BoardError):
 	'''Exception thrown when trying to place a stone on a non existant point'''
@@ -6,6 +11,10 @@ class NonExistantPointError(BoardError):
 
 class OccupiedError(BoardError):
 	'''Exception thrown when trying to place a stone on an occupied point'''
+	pass
+
+class SizeError(BoardError):
+	'''The size of the board is too big or small'''
 	pass
 
 class Board(Observable):
@@ -25,11 +34,11 @@ class Board(Observable):
 
 	def points(self):
 		'''Iterator yielding tuples representing the coordinates of the points and their values'''
-			return self.grid.points():
+		return self.grid.get_points()
 
 	def connections(self):
 		'''Iterate over the connections of the grid'''
-			return self.grid.connections():
+		return self.grid.get_connections()
 
 	def place_stone(self, move):
 		'''Attempt to place a stone at the given position. Throws an exception if there is not an empty space at that position'''
@@ -85,6 +94,8 @@ class Board(Observable):
 					move.player.captures += len(group.stones)
 					group.kill() #remove the stones from the board
 
+	def size(self):
+		return self.grid.size()
 
 class Group:
 	'''A group of stones which are connected'''
@@ -93,7 +104,7 @@ class Group:
 		self.liberties = 0
 		self.board = board
 		start_point = board.get_point(position)
-		if start_point is not none:
+		if start_point is not None:
 			self.owner = start_point
 			self.stones.append(position)
 			self.find_connected_stones(position)
@@ -123,3 +134,23 @@ class Group:
 	def kill(self):
 		for position in self.stones:
 			self.board.remove_stone(position)
+
+class RectangularBoard(Board):
+	'''Class for creating rectangular boards'''
+	def __init__(self, size):
+		try:
+			x,y = size
+		except:
+			raise SizeError()
+		if x < 3 or x > 50:
+			raise SizeError()
+		if y < 3 or y > 50:
+			raise SizeError()
+
+		grid = RectangularGrid(x, y)
+		Board.__init__(self,grid)
+
+	def get_size(self):
+		'''Number of points wide/tall the board is. This doesn't really have any use and is just intended for testing'''
+		x1,y1,x2,y2 = self.grid.size()
+		return (x2-x1+1,y2-y1+1)
