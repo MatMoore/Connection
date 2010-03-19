@@ -8,17 +8,17 @@ import geometry
 #class BoardError(Exception): pass
 #class SizeError(BoardError): pass
 
-class TwoPlayerGame:
+class TwoPlayerGame(Observable):
         '''Handles all the game logic for a 2 player game of go.'''
 
-        def __init__(self,board,fixed_handicap=0,komi=None,black='Black',white='White',custom_handicap=0,ruleset=None):
-                Subject.__init__(self)
+        def __init__(self,board,fixed_handicap=0,komi=0,black='Black',white='White',custom_handicap=0,ruleset=None):
+                Observable.__init__(self)
                 self.board = board
 
                 if ruleset:
                         self.ruleset = ruleset
                 else:
-                        self.ruleset = AGARuleset()
+                        self.ruleset = rules.AGARules()
 
                 self.history = [] # the board at all times in the past
                 self.moves = [] #the list of moves
@@ -28,8 +28,6 @@ class TwoPlayerGame:
 
                 if fixed_handicap or custom_handicap:
                         self.handicap = fixed_handicap + custom_handicap
-                        if not komi:
-                                komi = 0 #no komi on handicap games by default
                 else:
                         self.handicap = 0
 
@@ -50,10 +48,7 @@ class TwoPlayerGame:
                         self.next_player = self.black
 
                 #extra points to compensate white for black going first
-                if komi:
-                        self.komi = komi
-                else:
-                        self.komi = self.ruleset.komi
+                self.komi = komi
 
         def last_move(self):
                 '''Return the last move played'''

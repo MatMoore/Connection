@@ -2,46 +2,46 @@
 # Unit tests for game.py
 
 from game import *
+from board import *
 import unittest
 
 class GameTest(unittest.TestCase):
 	def setUp(self):
-		self.game = TwoPlayerGame((19,19))
+		board = RectangularBoard((19,19))
+		self.game = TwoPlayerGame(board)
 
 class MoveTest(GameTest):
 	def testBadMovePositions(self):
 		'''Check that moves played outside the board don't work'''
-		for position in ((-1,-1),(1,0),(2,20)):
-			self.assertRaises(NonExistantSquareError,self.game.play_move,position)
+		for position in ((-1,-1),(2,20)):
+			self.assertRaises(NonExistantPointError,self.game.play_move,position,self.game.black)
 
 	def testValidMove(self):
 		'''Check that the square is occupied by a stone after the move'''
-		self.game.play_move((1,1))
-		topleft = self.game.board.square((1,1))
-		assert topleft is not None
-		assert not topleft.empty()
-		assert topleft.owner == self.game.black
+		self.game.play_move((0,0),self.game.black)
+		topleft = self.game.board.get_point((0,0))
+		self.assertTrue(topleft is not None)
+		self.assertEquals(topleft, self.game.black)
 
 	def testOccupiedSquare(self):
 		'''Check that the stone is not placed if the square is already occupied'''
-		move1 = (1,1)
-		self.game.play_move(move1)
-		move2 = move1
-		self.assertRaises(OccupiedError, self.game.play_move, move2)
+		move1 = ((1,1))
+		self.game.play_move(move1,self.game.black)
+		self.assertRaises(OccupiedError, self.game.play_move, move1, self.game.white)
 
 	def testCapture(self):
 		'''Check a captured stone is removed'''
-		move1 = (1,1)
-		move2 = (2,1)
-		move3 = (5,5)
-		capture = (1,2)
-		self.game.play_move(move1)
-		self.game.play_move(move2)
-		self.game.play_move(move3)
-		self.game.play_move(capture)
+		move1 = (0,0)
+		move2 = (1,0)
+		move3 = (4,4)
+		capture = (0,1)
+		self.game.play_move(move1,self.game.black)
+		self.game.play_move(move2,self.game.white)
+		self.game.play_move(move3,self.game.black)
+		self.game.play_move(capture,self.game.white)
 
-		topleft = self.game.board.square((1,1))
-		assert topleft.empty()
+		topleft = self.game.board.get_point((0,0))
+		self.assertTrue(topleft is None)
 
 	def testKoViolated(self):
 		'''Check that we cannot retake the ko without the board changing'''
