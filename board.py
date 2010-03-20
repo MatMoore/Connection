@@ -1,3 +1,5 @@
+#!/usr/bin/python
+'''The classes in this module implement a Go board. Given a grid, the board lets you add and remove stones and group connected stones. There is no rule checking done by the board, use the rules module for this.'''
 from copy import copy,deepcopy
 from observer import Observable
 from geometry import RectangularGrid
@@ -57,8 +59,8 @@ class Board(Observable):
 			raise NonExistantPointError
 
 	def remove_stone(self, pos):
-		if not is_empty(self,pos):
-				raise OccupiedError
+		if self.is_empty(pos):
+				raise BoardError('Tried to remove a stone that doesn\'t exist')
 
 		self.grid.set_point(pos[0], pos[1], None)
 
@@ -96,6 +98,10 @@ class Board(Observable):
 
 	def size(self):
 		return self.grid.size()
+
+	def group(self,position):
+		'''Return the group of stones at a given position'''
+		return Group(self,position)
 
 class Group:
 	'''A group of stones which are connected'''

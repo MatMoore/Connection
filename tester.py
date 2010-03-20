@@ -18,6 +18,10 @@ class MoveTest(GameTest):
 
 	def testValidMove(self):
 		'''Check that the square is occupied by a stone after the move'''
+		print 'Placing stone as: ' + self.game.black.name
+		print 'Next player is: ' + self.game.next_player.name
+		topleft = self.game.board.get_point((0,0))
+		self.assertTrue(topleft is None)
 		self.game.play_move((0,0),self.game.black)
 		topleft = self.game.board.get_point((0,0))
 		self.assertTrue(topleft is not None)

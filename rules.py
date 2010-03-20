@@ -1,4 +1,7 @@
+#!/usr/bin/python
+'''This module implements various rulesets which can be used to validate moves and score the game.'''
 from copy import copy
+from board import Group
 
 #invalid move exceptions
 class InvalidMove(Exception): pass
@@ -30,7 +33,7 @@ class AGARules:
 			testboard.place_stone(move) #try the move
 			testboard.remove_dead_stones(move) #remove stones it captures
 			self.check_suicide(move,testboard) #check the stone is alive
-			self.check_superko(move,testboard,history) #check it doesnt repeat a previous board position
+			self.check_ko(move,testboard,history) #check it doesnt repeat a previous board position
 
 		def game_over(self,history,white,black):
 				'''game is over when black passes, then white passes'''
