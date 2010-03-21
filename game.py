@@ -137,10 +137,10 @@ class Move:
 
 	def __str__(self):
 			'''Format: [color] [letter][number]'''
-			d = int(self.position[0]-1)
+			d = int(self.position[0])
 			letters = [l for l in string.ascii_uppercase if l is not 'I']
 			x = letters[d]
-			y = self.position[1]
+			y = self.position[1] + 1
 			return '%s %s%d'%(self.player.color,x,y)
 
 class SpecialMove:

@@ -5,7 +5,6 @@ from board import Group
 
 #invalid move exceptions
 class InvalidMove(Exception): pass
-class OccupiedError(InvalidMove): pass
 class SuicideError(InvalidMove): pass
 class KoError(InvalidMove): pass
 class NonExistantSquareError(InvalidMove): pass

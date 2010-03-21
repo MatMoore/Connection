@@ -3,6 +3,7 @@
 
 from game import *
 from board import *
+from rules import *
 import unittest
 
 class GameTest(unittest.TestCase):
@@ -18,8 +19,6 @@ class MoveTest(GameTest):
 
 	def testValidMove(self):
 		'''Check that the square is occupied by a stone after the move'''
-		print 'Placing stone as: ' + self.game.black.name
-		print 'Next player is: ' + self.game.next_player.name
 		topleft = self.game.board.get_point((0,0))
 		self.assertTrue(topleft is None)
 		self.game.play_move((0,0),self.game.black)
@@ -29,7 +28,7 @@ class MoveTest(GameTest):
 
 	def testOccupiedSquare(self):
 		'''Check that the stone is not placed if the square is already occupied'''
-		move1 = ((1,1))
+		move1 = (1,1)
 		self.game.play_move(move1,self.game.black)
 		self.assertRaises(OccupiedError, self.game.play_move, move1, self.game.white)
 
@@ -49,68 +48,68 @@ class MoveTest(GameTest):
 
 	def testKoViolated(self):
 		'''Check that we cannot retake the ko without the board changing'''
-		move1 = (2,1) #black
-		move2 = (2,2) #white
-		move3 = (1,2) #black
-		move4 = (1,3) #white
-		move5 = (5,5) #black
-		move6 = (1,1) #white captures
-		violatesKo = (1,2) #black
-		self.game.play_move(move1)
-		self.game.play_move(move2)
-		self.game.play_move(move3)
-		self.game.play_move(move4)
-		self.game.play_move(move5)
-		self.game.play_move(move6)
-		self.assertRaises(KoError, self.game.play_move, violatesKo)
+		move1 = (1,0) #black
+		move2 = (1,1) #white
+		move3 = (0,1) #black
+		move4 = (0,2) #white
+		move5 = (4,4) #black
+		move6 = (0,0) #white captures
+		violatesKo = (0,1) #black
+		self.game.play_move(move1,self.game.black)
+		self.game.play_move(move2,self.game.white)
+		self.game.play_move(move3,self.game.black)
+		self.game.play_move(move4,self.game.white)
+		self.game.play_move(move5,self.game.black)
+		self.game.play_move(move6,self.game.white)
+		self.assertRaises(KoError, self.game.play_move, violatesKo,self.game.black)
 
 	def testTakeKo(self):
 		'''Check that if the board changes, we can retake the ko'''
-		move1 = (2,1) #black
-		move2 = (2,2) #white
-		move3 = (1,2) #black
-		move4 = (1,3) #white
-		move5 = (5,5) #black
-		move6 = (1,1) #white captures
-		move7 = (10,10) #black
-		move8 = (11,11) #white
-		legal = (1,2) #black
-		self.game.play_move(move1)
-		self.game.play_move(move2)
-		self.game.play_move(move3)
-		self.game.play_move(move4)
-		self.game.play_move(move5)
-		self.game.play_move(move6)
-		self.game.play_move(move7)
-		self.game.play_move(move8)
-		self.game.play_move(legal)
+		move1 = (1,0) #black
+		move2 = (1,1) #white
+		move3 = (0,1) #black
+		move4 = (0,2) #white
+		move5 = (4,4) #black
+		move6 = (0,0) #white captures
+		move7 = (9,9) #black
+		move8 = (10,10) #white
+		legal = (0,1) #black
+		self.game.play_move(move1,self.game.black)
+		self.game.play_move(move2,self.game.white)
+		self.game.play_move(move3,self.game.black)
+		self.game.play_move(move4,self.game.white)
+		self.game.play_move(move5,self.game.black)
+		self.game.play_move(move6,self.game.white)
+		self.game.play_move(move7,self.game.black)
+		self.game.play_move(move8,self.game.white)
+		self.game.play_move(legal,self.game.black)
 
 	def testSuicideForbidden(self):
 		'''Check for suicide'''
-		move1 = (2,1) #white
-		move2 = (5,5) #black
-		move3 = (1,2) #white
-		suicide = (1,1) #black
-		self.game.play_move(move1)
-		self.game.play_move(move2)
-		self.game.play_move(move3)
-		self.assertRaises(SuicideError, self.game.play_move, suicide)
+		move1 = (1,0) #white
+		move2 = (4,4) #black
+		move3 = (0,1) #white
+		suicide = (0,0) #black
+		self.game.play_move(move1,self.game.black)
+		self.game.play_move(move2,self.game.white)
+		self.game.play_move(move3,self.game.black)
+		self.assertRaises(SuicideError, self.game.play_move, suicide,self.game.white)
 
 	def testCapturingNotSuicide(self):
 		'''Check that placing a stone with no liberties is ok if it captures a group'''
-		move1 = (2,1) #white
-		move2 = (2,2) #black
-		move3 = (1,2) #white
-		move4 = (1,3) #black
-		move5 = (5,5) #white
-		notSuicide = (1,1) #black
+		move1 = (1,0) #white
+		move2 = (1,1) #black
+		move3 = (0,1) #white
+		move4 = (0,2) #black
+		move5 = (4,4) #white
+		notSuicide = (0,0) #black
 
-		self.game.play_move(move1)
-		self.game.play_move(move2)
-		self.game.play_move(move3)
-		self.game.play_move(move4)
-		self.game.play_move(move5)
-		self.game.play_move(notSuicide)
+		self.game.play_move(move1,self.game.black)
+		self.game.play_move(move2,self.game.white)
+		self.game.play_move(move3,self.game.black)
+		self.game.play_move(move4,self.game.white)
+		self.game.play_move(move5,self.game.black)
+		self.game.play_move(notSuicide,self.game.white)
 
 def suite():
 	suite1 = unittest.makeSuite(MoveTest)

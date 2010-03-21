@@ -32,7 +32,15 @@ class Board(Observable):
 
 	def __copy__(self):
 		'''Make a copy of this board.'''
-		return Board(deepcopy(self.grid))
+		newgrid = copy(self.grid)
+		newgrid.points = {}
+		newgrid.connections = {}
+		for i,j in self.grid.get_points():
+			newgrid.points[i] = j
+		for i,j in self.grid.get_connections():
+			newgrid.connections[i] = j
+
+		return Board(newgrid)
 
 	def points(self):
 		'''Iterator yielding tuples representing the coordinates of the points and their values'''
@@ -52,11 +60,8 @@ class Board(Observable):
 
 	def check_free_space(self,move):
 		'''Check to see if the space exists and is empty'''
-		try:
-			if self.grid.get_point(move.position[0], move.position[1]) != None:
-				raise OccupiedError
-		except:
-			raise NonExistantPointError
+		if not self.is_empty(move.position):
+			raise OccupiedError
 
 	def remove_stone(self, pos):
 		if self.is_empty(pos):
