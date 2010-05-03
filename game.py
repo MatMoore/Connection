@@ -118,6 +118,10 @@ class TwoPlayerGame(Observable):
 		def game_over(self):
 				return self.winner is not None
 
+		@Property
+		def players(self):
+			return self.black,self.white
+
 
 class Player:
 	'''Stores information about a player'''
