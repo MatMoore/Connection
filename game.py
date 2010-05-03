@@ -118,7 +118,7 @@ class TwoPlayerGame(Observable):
 		def game_over(self):
 				return self.winner is not None
 
-		@Property
+		@property
 		def players(self):
 			return self.black,self.white
 
