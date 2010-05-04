@@ -91,7 +91,6 @@ class Grid(Observable):
 			return self.points[(x,y)]
 		except KeyError:
 			print 'bad point ' + str(x) +','+str(y)
-			print 'points:' + self.points
 			raise Exception('Bad grid coordinates')
 
 	def get_points(self):

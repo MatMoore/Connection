@@ -7,7 +7,7 @@ import geometry
 class GridViewPygame:
 	'''Draw grids using pygame'''
 
-	def __init__(self, grid, surface, scale=None, rotation=0, zoom_to_fit=False, join_connected=False, highlight_connected=True):
+	def __init__(self, grid, surface, scale=None, rotation=0, zoom_to_fit=False, join_connected=False, highlight_connected=True, colors = {}):
 		grid_width = max([x for x,y in grid.points])
 		grid_height = max([y for x,y in grid.points])
 		width = surface.get_width()
@@ -27,6 +27,8 @@ class GridViewPygame:
 		self.highlight_connected = highlight_connected
 		self.join_connected = join_connected
 
+		self.colors = colors
+
 	def draw(self, *args):
 		'''Draw the grid'''
 		#print 'redrawing'
@@ -35,10 +37,12 @@ class GridViewPygame:
 
 		for p in self.grid.points:
 			x,y = p
+			point = self.grid.get_point(x,y)
 			x *= scale
 			y *= scale
-			if (p == self.highlighted):
-				pygame.draw.circle(self.surface, (0,0,255), (x,y), 3)
+
+			if point in self.colors:
+				pygame.draw.circle(self.surface, self.colors[point], (x,y), 5)
 			else:
 				pygame.draw.circle(self.surface, (0,0,0), (x,y), 2)
 
@@ -52,11 +56,7 @@ class GridViewPygame:
 					ay *= scale
 					bx *= scale
 					by *= scale
-					if (a == self.highlighted or b == self.highlighted):
-						pygame.draw.line(self.surface, (0,0,255), (ax,ay), (bx,by))
-					else:
-						pygame.draw.line(self.surface, (0,0,0), (ax,ay), (bx,by))
-
+					pygame.draw.line(self.surface, (0,0,0), (ax,ay), (bx,by),4)
 		if self.highlight_connected and self.highlighted:
 			for x,y in self.grid.connections[self.highlighted]:
 				x *= scale
@@ -88,10 +88,11 @@ if __name__ == '__main__':
 
 	#Create grid
 #	grid = RectangularGrid(19,19)
-	grid = geometry.FoldedGrid(19,19,1,[('N','S'),('E','W')])
+	grid = geometry.FoldedGrid(5,5,1,[('N','S'),('E','W')])
 #	grid = FoldedGrid(19,19,1,[],[('N','S'),('E','W')])
 	thegame = game.TwoPlayerGame(board.Board(grid))
-	view = GridViewPygame(thegame.board.grid, screen, zoom_to_fit=True)
+	colors = {thegame.black:(0,0,0),thegame.white:(100,100,100)}
+	view = GridViewPygame(thegame.board.grid, screen, zoom_to_fit=True, join_connected=True, highlight_connected=True, colors=colors)
 
 	view.draw()
 
