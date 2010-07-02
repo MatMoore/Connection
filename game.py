@@ -8,7 +8,7 @@ import rules
 import geometry
 
 # Define some exceptions
-class GameError: pass
+class GameError(Exception): pass
 
 class NotYourTurnError(GameError):
 	'''Thrown when a player makes a move when it's not their turn'''
@@ -52,6 +52,7 @@ class TwoPlayerGame(Observable):
 						self.next_player = self.white
 				else:
 						self.next_player = self.black
+				self.notify() # notify that next player has changed TODO make next_player a property and do this automatically
 
 				#extra points to compensate white for black going first
 				self.komi = komi
@@ -90,7 +91,7 @@ class TwoPlayerGame(Observable):
 				self.board.place_stone(move)
 				self.board.remove_dead_stones(move)
 
-				#save the board state and move for later
+				# save the board state and move for later
 				self.moves.append(move)
 				self.history.append(copy(self.board))
 
@@ -136,6 +137,7 @@ class Player:
 class Move:
 	'''Stores information about a move'''
 	def __init__(self,position,player):
+		self.type = 'move'
 		self.position = position
 		self.player = player
 

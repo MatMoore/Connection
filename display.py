@@ -3,6 +3,7 @@ import board
 import pygame
 from pygame.locals import *
 import geometry
+import sys
 
 class GridViewPygame:
 	'''Draw grids using pygame'''
@@ -27,7 +28,15 @@ class GridViewPygame:
 		self.highlight_connected = highlight_connected
 		self.join_connected = join_connected
 
-		self.colors = colors
+		if colors:
+			self.colors = colors
+		else:
+			self.colors = {
+					'black':(0,0,0),
+					'white':(255,255,255)
+			}
+
+		self.draw()
 
 	def draw(self, *args):
 		'''Draw the grid'''
@@ -42,9 +51,9 @@ class GridViewPygame:
 			y *= scale
 
 			if point in self.colors:
-				pygame.draw.circle(self.surface, self.colors[point], (x,y), 5)
+				pygame.draw.circle(self.surface, self.colors[point], (int(x),int(y)), 15)
 			else:
-				pygame.draw.circle(self.surface, (0,0,0), (x,y), 2)
+				pygame.draw.circle(self.surface, (0,0,0), (int(x),int(y)), 5)
 
 		#This actually draws the line for each connection twice but never mind
 		if self.join_connected:
@@ -61,7 +70,7 @@ class GridViewPygame:
 			for x,y in self.grid.connections[self.highlighted]:
 				x *= scale
 				y *= scale
-				pygame.draw.circle(self.surface, (0,255,0), (x,y), 2)
+				pygame.draw.circle(self.surface, (0,255,0), (int(x),int(y)), 2)
 
 		pygame.display.flip()
 
@@ -72,29 +81,46 @@ class GridViewPygame:
 		y = int(round(y/self.scale))
 		return (x,y)
 
-	def onClick(self, pos):
-		'''Highlight the nearest point'''
+	def on_click(self, pos):
+		pass
+
+class GameViewPygame(GridViewPygame):
+	def __init__(self, game_controller, surface, scale=None, rotation=0, zoom_to_fit=False, join_connected=False, highlight_connected=True, colors = {}):
+		GridViewPygame.__init__(self, game_controller.game.board.grid, surface, scale, rotation, zoom_to_fit, join_connected, highlight_connected, colors)
+		self.controller = game_controller
+		self.accept_moves = game_controller.accept_local_moves
+
+	def on_click(self, pos):
 		pos = self.board_to_grid(pos)
-		#print pos
-		self.highlighted = pos
-		self.draw(False,True)
+
+		if self.controller.accept_local_moves:
+			try:
+				print 'Playing %s,%s...' % pos
+				self.controller.play_move(pos)
+			except game.NotYourTurnError:
+				print 'Nope'
 
 
 if __name__ == '__main__':
+	#Test the display stuff only
+
+	# Monkey patch the on click behaviour
+	def on_click(self,pos):
+		'''Highlight the nearest point'''
+		pos = self.board_to_grid(pos)
+		self.highlighted = pos
+		self.draw(False,True)
+	GridViewPygame.on_click = on_click
 
 	#Initialize pygame
 	pygame.init()
 	screen = pygame.display.set_mode((600, 300))
 
 	#Create grid
-#	grid = RectangularGrid(19,19)
 	grid = geometry.FoldedGrid(5,5,1,[('N','S'),('E','W')])
-#	grid = FoldedGrid(19,19,1,[],[('N','S'),('E','W')])
 	thegame = game.TwoPlayerGame(board.Board(grid))
 	colors = {thegame.black:(0,0,0),thegame.white:(100,100,100)}
 	view = GridViewPygame(thegame.board.grid, screen, zoom_to_fit=True, join_connected=True, highlight_connected=True, colors=colors)
-
-	view.draw()
 
 	#Handle events
 	while True:
@@ -103,4 +129,4 @@ if __name__ == '__main__':
 				pygame.quit()
 				sys.exit()
 			elif event.type == MOUSEBUTTONDOWN:
-				view.onClick(pygame.mouse.get_pos())
+				view.on_click(pygame.mouse.get_pos())
