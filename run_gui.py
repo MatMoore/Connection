@@ -12,12 +12,12 @@ def start_game_simple(screen):
 
 	#Create grid
 	grid = geometry.FoldedGrid(5,5,1,[('N','S'),('E','W')])
-	thegame = game.TwoPlayerGame(board.Board(grid))
-	game_controller = controller.Controller(thegame)
-	game_controller.add_local_player(thegame.black)
-	game_controller.add_local_player(thegame.white)
+	game_controller = controller.Controller()
+	black = game_controller.add_local_player('black','Black player')
+	white = game_controller.add_local_player('white','White player')
+	game_controller.begin_game(board.Board(grid))
 
-	colors = {thegame.black:(0,0,0),thegame.white:(100,100,100)}
+	colors = {black:(0,0,0),white:(100,100,100)}
 	view = display.GameViewPygame(game_controller, screen, zoom_to_fit=True, join_connected=True, highlight_connected=True,colors=colors)
 #	view = display.GridViewPygame(grid, screen, zoom_to_fit=True, join_connected=True, highlight_connected=True,colors=colors)
 

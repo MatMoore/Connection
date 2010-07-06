@@ -17,7 +17,7 @@ class NotYourTurnError(GameError):
 class TwoPlayerGame(Observable):
 		'''Handles all the game logic for a 2 player game of go.'''
 
-		def __init__(self,board,fixed_handicap=0,komi=0,black='Black',white='White',custom_handicap=0,ruleset=None):
+		def __init__(self,board,black_player=None,white_player=None,fixed_handicap=0,komi=0,custom_handicap=0,ruleset=None):
 				Observable.__init__(self)
 				self.board = board
 
@@ -28,8 +28,14 @@ class TwoPlayerGame(Observable):
 
 				self.history = [] # the board at all times in the past
 				self.moves = [] #the list of moves
-				self.black = Player('black',black)
-				self.white = Player('white',white)
+
+				if black_player is None:
+					black_player = Player('black','Black')
+				if white_player is None:
+					white_player = Player('black','Black')
+
+				self.black = black_player
+				self.white = white_player
 				self.winner = None
 
 				if fixed_handicap or custom_handicap:
@@ -52,7 +58,6 @@ class TwoPlayerGame(Observable):
 						self.next_player = self.white
 				else:
 						self.next_player = self.black
-				self.notify() # notify that next player has changed TODO make next_player a property and do this automatically
 
 				#extra points to compensate white for black going first
 				self.komi = komi
