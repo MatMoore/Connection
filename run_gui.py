@@ -17,7 +17,7 @@ def start_game_simple(screen):
 	white = game_controller.add_local_player('white','White player')
 	game_controller.begin_game(board.Board(grid))
 
-	colors = {black:(0,0,0),white:(100,100,100)}
+	colors = {black:(0,0,0),white:(200,200,200)}
 	view = display.GameViewPygame(game_controller, screen, zoom_to_fit=True, join_connected=True, highlight_connected=True,colors=colors)
 #	view = display.GridViewPygame(grid, screen, zoom_to_fit=True, join_connected=True, highlight_connected=True,colors=colors)
 

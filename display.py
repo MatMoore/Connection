@@ -44,17 +44,6 @@ class GridViewPygame:
 		scale = self.scale
 		self.surface.fill((255,255,255))
 
-		for p in self.grid.points:
-			x,y = p
-			point = self.grid.get_point(x,y)
-			x *= scale
-			y *= scale
-
-			if point in self.colors:
-				pygame.draw.circle(self.surface, self.colors[point], (int(x),int(y)), 15)
-			else:
-				pygame.draw.circle(self.surface, (0,0,0), (int(x),int(y)), 5)
-
 		#This actually draws the line for each connection twice but never mind
 		if self.join_connected:
 			for a,bs in self.grid.connections.items():
@@ -71,6 +60,17 @@ class GridViewPygame:
 				x *= scale
 				y *= scale
 				pygame.draw.circle(self.surface, (0,255,0), (int(x),int(y)), 2)
+
+		for p in self.grid.points:
+			x,y = p
+			point = self.grid.get_point(x,y)
+			x *= scale
+			y *= scale
+
+			if point in self.colors:
+				pygame.draw.circle(self.surface, self.colors[point], (int(x),int(y)), 15)
+			else:
+				pygame.draw.circle(self.surface, (0,0,0), (int(x),int(y)), 5)
 
 		pygame.display.flip()
 
