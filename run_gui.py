@@ -18,8 +18,7 @@ def start_game_simple(screen):
 	game_controller.begin_game(board.Board(grid))
 
 	colors = {black:(0,0,0),white:(200,200,200)}
-	view = display.GameViewPygame(game_controller, screen, zoom_to_fit=True, join_connected=True, highlight_connected=True,colors=colors)
-#	view = display.GridViewPygame(grid, screen, zoom_to_fit=True, join_connected=True, highlight_connected=True,colors=colors)
+	view = display.GameGUIPygame(game_controller, screen, (600,300), (10,10), zoom_to_fit=True, join_connected=True, highlight_connected=True,colors=colors)
 
 	#Handle events
 	while True:
@@ -34,6 +33,6 @@ if __name__ == '__main__':
 
 	#Initialize pygame
 	pygame.init()
-	screen = pygame.display.set_mode((600, 300))
+	screen = pygame.display.set_mode((620, 320))
 
 	start_game_simple(screen)

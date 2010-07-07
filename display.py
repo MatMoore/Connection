@@ -4,11 +4,13 @@ import pygame
 from pygame.locals import *
 import geometry
 import sys
+import observer
 
-class GridViewPygame:
+class GridViewPygame(observer.Observable):
 	'''Draw grids using pygame'''
 
 	def __init__(self, grid, surface, scale=None, rotation=0, zoom_to_fit=False, join_connected=False, highlight_connected=True, colors = {}):
+		observer.Observable.__init__(self)
 		grid_width = max([x for x,y in grid.points])
 		grid_height = max([y for x,y in grid.points])
 		width = surface.get_width()
@@ -72,7 +74,7 @@ class GridViewPygame:
 			else:
 				pygame.draw.circle(self.surface, (0,0,0), (int(x),int(y)), 5)
 
-		pygame.display.flip()
+		self.notify()
 
 	def board_to_grid(self, pos):
 		'''Convert view coordinates to grid ones'''
@@ -85,12 +87,22 @@ class GridViewPygame:
 		pass
 
 class GameViewPygame(GridViewPygame):
+	'''An interactive go board'''
 	def __init__(self, game_controller, surface, scale=None, rotation=0, zoom_to_fit=False, join_connected=False, highlight_connected=True, colors = {}):
 		GridViewPygame.__init__(self, game_controller.game.board.grid, surface, scale, rotation, zoom_to_fit, join_connected, highlight_connected, colors)
 		self.controller = game_controller
 		self.accept_moves = game_controller.accept_local_moves
 
 	def on_click(self, pos):
+		# Ignore clicks outside the board TODO: fix board to include all of top/left stones properly
+		x,y = pos
+
+		if x < 0 \
+		or y < 0 \
+		or x > self.surface.get_width() \
+		or y > self.surface.get_height():
+			return
+
 		pos = self.board_to_grid(pos)
 
 		if self.controller.accept_local_moves:
@@ -99,6 +111,43 @@ class GameViewPygame(GridViewPygame):
 				self.controller.play_move(pos)
 			except game.NotYourTurnError:
 				print 'Nope'
+
+class GameGUIPygame():
+	'''GUI for playing a game of go'''
+	def __init__(self,game_controller,screen,board_size,offset,**kwargs):
+		self.screen = screen
+		board_surface = pygame.Surface(board_size)
+		self.game_view = GameViewPygame(game_controller,board_surface,**kwargs)
+		self.game_view.register_listener(self.draw)
+
+		b_left,b_top = offset
+		b_width,b_height = board_size
+		self.layout = {
+				'board': (b_left,b_top,b_left+b_width,b_top+b_height)
+		}
+
+		self.draw()
+
+	def screen_to_view(self,pos,view='board'):
+		'''Convert screen coordinates into coordinates for a view'''
+		x,y = pos
+		left = self.layout[view][1]
+		top = self.layout[view][0]
+		return (x-left, y-top)
+
+	def draw(self, *args):
+		'''Draw the gui'''
+		self.screen.fill((255,255,255))
+
+		# Draw the board in the middle
+		board_pos = self.layout['board'][:2]
+		self.screen.blit(self.game_view.surface, board_pos)
+		pygame.display.flip()
+
+	def on_click(self,pos):
+		'''Forward on_click event down to child views'''
+		x,y = self.screen_to_view(pos)
+		self.game_view.on_click(pos)
 
 
 if __name__ == '__main__':

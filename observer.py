@@ -15,4 +15,4 @@ class Observable:
 
 	def notify(self, *args):
 		for i in self.listeners:
-			i(args)
+			i(*args)
