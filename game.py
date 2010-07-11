@@ -6,6 +6,7 @@ from copy import copy
 import string
 import rules
 import geometry
+import multilogger
 
 # Define some exceptions
 class GameError(Exception): pass
@@ -18,6 +19,7 @@ class TwoPlayerGame(Observable):
 		'''Handles all the game logic for a 2 player game of go.'''
 
 		def __init__(self,board,black_player=None,white_player=None,fixed_handicap=0,komi=0,custom_handicap=0,ruleset=None):
+				info('Starting game')
 				Observable.__init__(self)
 				self.board = board
 
@@ -163,3 +165,6 @@ class SpecialMove:
 
 	def __str__(self):
 		return '%s %s'%(self.player.color,self.type)
+
+# Get a logger for this module
+debug,info,warning,error = multilogger.logFunctions(__name__)

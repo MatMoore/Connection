@@ -5,6 +5,7 @@ import geometry
 import board
 import pygame
 import sys
+import multilogger
 from pygame.locals import *
 
 # Flesh this out when the ability to configure the game is implemented properly
@@ -29,7 +30,12 @@ def start_game_simple(screen):
 			elif event.type == MOUSEBUTTONDOWN:
 				view.on_click(pygame.mouse.get_pos())
 
+# Get a logger for this module
+debug,info,warning,error = multilogger.logFunctions(__name__)
+
 if __name__ == '__main__':
+
+	info('Starting GUI')
 
 	#Initialize pygame
 	pygame.init()
