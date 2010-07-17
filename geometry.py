@@ -1,6 +1,7 @@
-'''Classes for modelling the goboard itself, i.e. an arrangement of points with lines connecting them. No game logic is included.
+#!/usr/bin/python
+'''Classes for modelling the go board itself, i.e. an arrangement of points with lines connecting them. No game logic is included here.
 
-There are two types of object here -
+There are two types of object in this module -
 
 Grid = A collection of points which we can set to arbitary values. The interface should allow us to get/set the value of a point by its coordinates, iterate over the points, and retrieve the points connected to any given point, as well as compare two grids.
 
@@ -11,13 +12,14 @@ Lattice = convienceince classes for feeding to a grid in order to produce crysta
 NB: Grid/lattice coordinates should all be integers. They are not intended to convey scale, only the relative position of points.
 '''
 # TODO:
-# Allow for many exotic board types...
-# 2D: rectangular, cylindrical, mobius, torus, hexagonal, triangular, combinations,
+# Allow for more exotic board types...
+# 2D: hexagonal, triangular, custom,
 # 3D: diamond, cubic
 # 4D: ???
 from itertools import izip
 import sys
 from observer import Observable
+import multilogger
 
 class Grid(Observable):
 	'''A representation of a 2D grid with each point holding some value.
@@ -38,7 +40,7 @@ class Grid(Observable):
 
 		for lx,ly in lattice.items():
 
-			#Add the points by superimposing the basis onto each lattice point
+			# Add the points by superimposing the basis onto each lattice point
 			for b in basis:
 				bx, by = b
 				self.points[(lx+bx, ly+by)] = default_value
@@ -49,7 +51,7 @@ class Grid(Observable):
 				self.ymax = max(self.ymax, ly+by)
 				self.xmax = max(self.xmax, lx+bx)
 
-		#now connect the points
+		# Now connect the points
 		for lx,ly in lattice.items():
 
 			try:
@@ -60,10 +62,6 @@ class Grid(Observable):
 					if a in self.points and b in self.points:
 						self.connections[a].append(b)
 						self.connections[b].append(a)
-#					else:
-						#print 'Missing points for connection '+str(a)+'-'+str(b)
-						#if a not in self.points: print a
-						#if b not in self.points: print b
 			except KeyError:
 				raise Exception('Invalid connections')
 
@@ -82,7 +80,7 @@ class Grid(Observable):
 	def set_point(self, x, y, val):
 		try:
 			self.points[(x,y)] = val
-			self.notify() #notify observers on changes
+			self.notify() # Notify observers on changes
 		except KeyError:
 			raise Exception('Bad grid coordinates')
 
@@ -90,7 +88,6 @@ class Grid(Observable):
 		try:
 			return self.points[(x,y)]
 		except KeyError:
-			print 'bad point ' + str(x) +','+str(y)
 			raise Exception('Bad grid coordinates')
 
 	def get_points(self):
@@ -106,7 +103,7 @@ class RectangularGrid(Grid):
 	'''A rectangular grid. Aspect ratio should be a natural number (horizontal spacing >= vertical spacing)'''
 
 	def __init__(self, width, height, aspect_ratio=1):
-		aspect_ratio = int(aspect_ratio) #no floats please!
+		aspect_ratio = int(aspect_ratio) # No floats please!
 		lattice = RectangularLattice(width, height, aspect_ratio)
 		basis = ((0, 0),)
 		connections = ((0, 0, 1*aspect_ratio, 0), (0, 0, 0, 1))
@@ -120,21 +117,21 @@ class FoldedGrid(RectangularGrid):
 	def __init__(self, width, height, aspect_ratio, joins = [], reverse_joins = []):
 		RectangularGrid.__init__(self, width, height, aspect_ratio)
 
-		#Lists of coordinates making up each side
+		# Lists of coordinates making up each side
 		east = []
 		west = []
 		north = []
 		south = []
 
 
-		#East/West coordinates
+		# East/West coordinates
 		x1 = 0
 		x2 = (width - 1) * aspect_ratio
 		for i in range(height):
 			east.append((x1, i))
 			west.append((x2, i))
 
-		#North/South coordinates
+		# North/South coordinates
 		y1 = 0
 		y2 = height - 1
 		for i in range(width):
@@ -144,18 +141,17 @@ class FoldedGrid(RectangularGrid):
 
 		sides = {'E':east, 'W':west, 'N':north, 'S':south}
 
-		#Make the extra connections
+		# Make the extra connections
 		try:
 			for sideA, sideB in joins:
-				#Zip the two sides together to get a tuple of tuples (coordinates) for each connected pair
+				# Zip the two sides together to get a tuple of tuples (coordinates) for each connected pair
 				for c1, c2 in izip(sides[sideA], sides[sideB]):
 					self.connections[c1].append(c2)
 					self.connections[c2].append(c1)
 
 			for sideA, sideB in reverse_joins:
-				#This time the second side is reversed!
+				# This time the second side is reversed!
 				for c1, c2 in izip(sides[sideA], reversed(sides[sideB])):
-					#print str(c1) + '-' + str(c2)
 					self.connections[c1].append(c2)
 					self.connections[c2].append(c1)
 
@@ -167,7 +163,7 @@ class RectangularLattice:
 	'''List of coordinates of points arranged in a grid'''
 
 	def __init__(self, width, height, aspect_ratio=1):
-		aspect_ratio = int(aspect_ratio) #no floats please
+		aspect_ratio = int(aspect_ratio) # No floats please
 		self.points = []
 		for i in range(width):
 			i *= aspect_ratio
@@ -177,3 +173,6 @@ class RectangularLattice:
 	def items(self):
 		for i in self.points:
 			yield i
+
+# Get a logger for this module
+debug,info,warning,error = multilogger.logFunctions(__name__)

@@ -1,3 +1,5 @@
+#!/usr/bin/python
+'''Run the game GUI'''
 import controller
 import display
 import game
@@ -10,15 +12,19 @@ from pygame.locals import *
 
 # Flesh this out when the ability to configure the game is implemented properly
 def start_game_simple(screen):
+	'''Start a game of Go'''
 
 	#Create grid
 	grid = geometry.FoldedGrid(5,5,1,[('N','S'),('E','W')])
+
+	#Create game controller
 	game_controller = controller.Controller()
 	black = game_controller.add_local_player('black','Black player')
 	white = game_controller.add_local_player('white','White player')
 	game_controller.begin_game(board.Board(grid))
 
-	colors = {black:(0,0,0),white:(200,200,200)}
+	#Create GUI
+	colors = {black:(0,0,0), white:(200,200,200)}
 	view = display.GameGUIPygame(game_controller, screen, (600,300), (10,10), zoom_to_fit=True, join_connected=True, highlight_connected=True,colors=colors)
 
 	#Handle events

@@ -1,6 +1,5 @@
 #!/usr/bin/python
 '''The game logic for a two player game of go'''
-#TODO: modify game to take players as args
 from observer import Observable
 from copy import copy
 import string
@@ -15,131 +14,129 @@ class NotYourTurnError(GameError):
 	'''Thrown when a player makes a move when it's not their turn'''
 	pass
 
+
 class TwoPlayerGame(Observable):
-		'''Handles all the game logic for a 2 player game of go.'''
+	'''Handles all the game logic for a 2 player game of go.'''
 
-		def __init__(self,board,black_player=None,white_player=None,fixed_handicap=0,komi=0,custom_handicap=0,ruleset=None):
-				info('Starting game')
-				Observable.__init__(self)
-				self.board = board
+	def __init__(self,board,black_player=None,white_player=None,fixed_handicap=0,komi=0,custom_handicap=0,ruleset=None):
+		info('Starting game')
 
-				if ruleset:
-						self.ruleset = ruleset
-				else:
-						self.ruleset = rules.AGARules()
+		Observable.__init__(self)
+		self.board = board
 
-				self.history = [] # the board at all times in the past
-				self.moves = [] #the list of moves
+		if ruleset:
+			self.ruleset = ruleset
+		else:
+			self.ruleset = rules.AGARules()
 
-				if black_player is None:
-					black_player = Player('black','Black')
-				if white_player is None:
-					white_player = Player('black','Black')
+		self.history = [] # the board at all times in the past
+		self.moves = [] # the list of moves
 
-				self.black = black_player
-				self.white = white_player
-				self.winner = None
+		if black_player is None:
+			black_player = Player('black','Black')
+		if white_player is None:
+			white_player = Player('black','Black')
 
-				if fixed_handicap or custom_handicap:
-						self.handicap = fixed_handicap + custom_handicap
-				else:
-						self.handicap = 0
+		self.black = black_player
+		self.white = white_player
+		self.winner = None
 
-				if fixed_handicap:
-						placed_stones = ruleset.place_handicap(fixed_handicap,self.board,self.black)
-						if placed_stones < fixed_handicap:
-								custom_handicap += fixed_handicap - placed_stones
+		if fixed_handicap or custom_handicap:
+			self.handicap = fixed_handicap + custom_handicap
+		else:
+			self.handicap = 0
 
-				if custom_handicap:
-						self.remaining_handicap = custom_handicap
-				else:
-						self.remaining_handicap = 0
+		if fixed_handicap:
+			placed_stones = ruleset.place_handicap(fixed_handicap,self.board,self.black)
+			if placed_stones < fixed_handicap:
+				custom_handicap += fixed_handicap - placed_stones
 
-				#black goes first, unless they have a handicap
-				if self.handicap and self.remaining_handicap == 0:
-						self.next_player = self.white
-				else:
-						self.next_player = self.black
+		if custom_handicap:
+			self.remaining_handicap = custom_handicap
+		else:
+			self.remaining_handicap = 0
 
-				#extra points to compensate white for black going first
-				self.komi = komi
+		# Black goes first, unless they have a handicap
+		if self.handicap and self.remaining_handicap == 0:
+			self.next_player = self.white
+		else:
+			self.next_player = self.black
 
-		def last_move(self):
-				'''Return the last move played'''
-				if self.moves:
-						return self.moves[-1]
+		# Extra points to compensate white for black going first
+		self.komi = komi
 
-		def change_player(self):
-				'''Toggle the next player'''
-				if self.next_player == self.black:
-						self.next_player = self.white
-				else:
-						self.next_player = self.black
+	def last_move(self):
+		'''Return the last move played'''
+		if self.moves:
+			return self.moves[-1]
 
-		def current_player(self):
-				'''Return the id of the current player'''
-				return self.next_player.color
+	def change_player(self):
+		'''Toggle the next player'''
+		if self.next_player == self.black:
+			self.next_player = self.white
+		else:
+			self.next_player = self.black
 
-		def last_move(self):
-				if self.moves:
-						return self.moves[-1]
+	def current_player(self):
+		'''Return the id of the current player'''
+		return self.next_player.color
 
-		def play_move(self,position,player):
-				'''Play the next move'''
-				if player is not self.next_player:
-						raise NotYourTurnError
+	def play_move(self,position,player):
+		'''Attempt to play the next move'''
 
-				move = Move(position, player)
+		if player is not self.next_player:
+			raise NotYourTurnError
 
-				#check the move doesn't break the rules (will raise an exception if it does)
-				self.ruleset.check_rules(move,self.board,self.history)
+		move = Move(position, player)
 
-				#play the move
-				self.board.place_stone(move)
-				self.board.remove_dead_stones(move)
+		# Check the move doesn't break the rules (will raise an exception if it does)
+		self.ruleset.check_rules(move,self.board,self.history)
 
-				# save the board state and move for later
-				self.moves.append(move)
-				self.history.append(copy(self.board))
+		# Play the move
+		self.board.place_stone(move)
+		self.board.remove_dead_stones(move)
 
-				if not self.remaining_handicap:
-						self.change_player()
-				else:
-						self.remaining_handicap -= 1
+		# Save the board state and move for later
+		self.moves.append(move)
+		self.history.append(copy(self.board))
 
-				self.notify()
+		# If this is a handicap stone, then it might still be the current player's turn
+		if not self.remaining_handicap:
+			self.change_player()
+		else:
+			self.remaining_handicap -= 1
 
-		def pass_turn(self):
-				'''Pass turn. If both players pass the game is over.'''
-				self.moves.append(SpecialMove('pass',self.next_player))
-				self.change_player()
-				self.notify()
+		self.notify()
 
-		def resign(self):
-				if self.next_player == self.black:
-						self.winner = self.white
-				else:
-						self.winner = self.black
+	def pass_turn(self):
+		'''Pass turn. If both players pass the game is over.'''
+		self.moves.append(SpecialMove('pass',self.next_player))
+		self.change_player()
+		self.notify()
 
-				self.notify()
+	def resign(self):
+		'''Resign the game.'''
+		if self.next_player == self.black:
+			self.winner = self.white
+		else:
+			self.winner = self.black
 
-		def game_over(self):
-				return self.winner is not None
+		self.notify()
 
-		@property
-		def players(self):
-			return self.black,self.white
+	@property
+	def players(self):
+		return self.black,self.white
 
 
 class Player:
 	'''Stores information about a player'''
 	def __init__(self,color,name=None):
-			self.color = color
-			if name:
-					self.name = name
-			else:
-					self.name = color
-			self.captures = 0
+		self.color = color
+		if name:
+			self.name = name
+		else:
+			self.name = color
+		self.captures = 0
 
 class Move:
 	'''Stores information about a move'''
@@ -148,13 +145,16 @@ class Move:
 		self.position = position
 		self.player = player
 
+	# TODO: fix this to be more reliable.
+	# Create a seperate function for GTP representation
+	# if the board is compatable
 	def __str__(self):
-			'''Format: [color] [letter][number]'''
-			d = int(self.position[0])
-			letters = [l for l in string.ascii_uppercase if l is not 'I']
-			x = letters[d]
-			y = self.position[1] + 1
-			return '%s %s%d'%(self.player.color,x,y)
+		'''Format: [color] [letter][number]'''
+		d = int(self.position[0])
+		letters = [l for l in string.ascii_uppercase if l is not 'I']
+		x = letters[d]
+		y = self.position[1] + 1
+		return '%s %s%d'%(self.player.color,x,y)
 
 class SpecialMove:
 	'''Represents a pass/resign move'''

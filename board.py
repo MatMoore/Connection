@@ -1,9 +1,11 @@
 #!/usr/bin/python
-'''The classes in this module implement a Go board. Given a grid, the board lets you add and remove stones and group connected stones. There is no rule checking done by the board, use the rules module for this.'''
+'''The classes in this module implement a Go board. Given a grid, the board lets you add and remove stones and group connected stones. There is no rule checking done by the board itself - this is taken care of in the rules module.'''
 from copy import copy,deepcopy
 from observer import Observable
 from geometry import RectangularGrid
+import multilogger
 
+# Define some exceptions
 class BoardError(Exception):
 	'''Exceptions thrown on invalid board operations'''
 
@@ -18,6 +20,7 @@ class OccupiedError(BoardError):
 class SizeError(BoardError):
 	'''The size of the board is too big or small'''
 	pass
+
 
 class Board(Observable):
 	'''A rectangular board. Stones can be added to any square which isnt occupied.'''
@@ -52,10 +55,10 @@ class Board(Observable):
 
 	def place_stone(self, move):
 		'''Attempt to place a stone at the given position. Throws an exception if there is not an empty space at that position'''
-		#check that there is a free space at that position
+		# Check that there is a free space at that position
 		self.check_free_space(move)
 
-		#place the stone
+		# Place the stone
 		self.grid.set_point(move.position[0], move.position[1], move.player)
 
 	def check_free_space(self,move):
@@ -95,11 +98,11 @@ class Board(Observable):
 				# Save the positions of all the stones in this group to avoid checking the same group multiple times
 				already_checked.extend(group.stones)
 
-				if group.liberties == 0: #the group is captured!
+				if group.liberties == 0: # the group is captured!
 
 					# Update the number of captured stones for this player
 					move.player.captures += len(group.stones)
-					group.kill() #remove the stones from the board
+					group.kill() # remove the stones from the board
 
 	def size(self):
 		return self.grid.size()
@@ -111,7 +114,7 @@ class Board(Observable):
 class Group:
 	'''A group of stones which are connected'''
 	def __init__(self,board,position):
-		self.stones = [] #list of positions of the stones
+		self.stones = [] # list of positions of the stones
 		self.liberties = 0
 		self.board = board
 		start_point = board.get_point(position)
@@ -121,18 +124,17 @@ class Group:
 			self.find_connected_stones(position)
 
 	def __eq__(self,other):
-		#check the size, liberties and board is the same
 		if len(self.stones) is not len(other.stones) or self.owner is not other.owner or self.board is not other.board:
 			return False
 
-		#check all the stones are the same
+		# Check all the stones are the same
 		for i in self.stones:
 			if i not in other.stones:
 				return False
 		return True
 
 	def find_connected_stones(self,position):
-		'''Recursively add stones which are connected to the starting stone, and count the liberties of the group.'''
+		'''Recursively add stones which are connected to the starting stone, and check for liberties.'''
 		neighbours = self.board.neighbours(position)
 		for next in neighbours:
 			if next not in self.stones:
@@ -143,11 +145,14 @@ class Group:
 					self.find_connected_stones(next)
 
 	def kill(self):
+		'''Remove the group from the board'''
 		for position in self.stones:
 			self.board.remove_stone(position)
 
+
 class RectangularBoard(Board):
-	'''Class for creating rectangular boards'''
+	'''Class for creating regular rectangular boards'''
+
 	def __init__(self, size):
 		try:
 			x,y = size
@@ -165,3 +170,6 @@ class RectangularBoard(Board):
 		'''Number of points wide/tall the board is. This doesn't really have any use and is just intended for testing'''
 		x1,y1,x2,y2 = self.grid.size()
 		return (x2-x1+1,y2-y1+1)
+
+# Get a logger for this module
+debug,info,warning,error = multilogger.logFunctions(__name__)

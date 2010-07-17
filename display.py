@@ -5,11 +5,13 @@ from pygame.locals import *
 import geometry
 import sys
 import observer
+import multilogger
+import rules
 
 class GridViewPygame(observer.Observable):
 	'''Draw grids using pygame'''
 
-	def __init__(self, grid, surface, scale=None, rotation=0, zoom_to_fit=False, join_connected=False, highlight_connected=True, colors = {}):
+	def __init__(self, grid, surface, scale=None, rotation=0, zoom_to_fit=False, join_connected=False, highlight_connected=True, colors = {}, mainScreen=False):
 		observer.Observable.__init__(self)
 		grid_width = max([x for x,y in grid.points])
 		grid_height = max([y for x,y in grid.points])
@@ -38,15 +40,18 @@ class GridViewPygame(observer.Observable):
 					'white':(255,255,255)
 			}
 
+		# Flag to specify if we are drawing to the screen surface
+		self.mainScreen = mainScreen
 		self.draw()
 
 	def draw(self, *args):
 		'''Draw the grid'''
-		#print 'redrawing'
+		debug('Redrawing grid')
 		scale = self.scale
 		self.surface.fill((255,255,255))
 
-		#This actually draws the line for each connection twice but never mind
+		# This actually draws the line for each connection twice but never mind.
+		# It also doesn't care about whether edge connections should be visible.
 		if self.join_connected:
 			for a,bs in self.grid.connections.items():
 				for b in bs:
@@ -57,11 +62,6 @@ class GridViewPygame(observer.Observable):
 					bx *= scale
 					by *= scale
 					pygame.draw.line(self.surface, (0,0,0), (ax,ay), (bx,by),4)
-		if self.highlight_connected and self.highlighted:
-			for x,y in self.grid.connections[self.highlighted]:
-				x *= scale
-				y *= scale
-				pygame.draw.circle(self.surface, (0,255,0), (int(x),int(y)), 2)
 
 		for p in self.grid.points:
 			x,y = p
@@ -73,6 +73,16 @@ class GridViewPygame(observer.Observable):
 				pygame.draw.circle(self.surface, self.colors[point], (int(x),int(y)), 15)
 			else:
 				pygame.draw.circle(self.surface, (0,0,0), (int(x),int(y)), 5)
+
+		if self.highlight_connected and self.highlighted:
+			debug('Highlighting connections for %s' % str(self.highlighted))
+			for x,y in self.grid.connections[self.highlighted]:
+				x *= scale
+				y *= scale
+				pygame.draw.circle(self.surface, (0,255,0), (int(x),int(y)), 2)
+
+		if self.mainScreen:
+			pygame.display.flip()
 
 		self.notify()
 
@@ -94,7 +104,9 @@ class GameViewPygame(GridViewPygame):
 		self.accept_moves = game_controller.accept_local_moves
 
 	def on_click(self, pos):
-		# Ignore clicks outside the board TODO: fix board to include all of top/left stones properly
+		'''Callback called when the user clicks in the window'''
+		# Ignore clicks outside the board
+		# TODO: fix board to include all the top/left of stones properly
 		x,y = pos
 
 		if x < 0 \
@@ -107,10 +119,18 @@ class GameViewPygame(GridViewPygame):
 
 		if self.controller.accept_local_moves:
 			try:
-				print 'Playing %s,%s...' % pos
+				debug('Playing %s,%s...' % pos)
 				self.controller.play_move(pos)
 			except game.NotYourTurnError:
-				print 'Nope'
+				debug('Not your turn')
+			except board.BoardError:
+				debug('Cannot place a stone there')
+			except rules.KoError:
+				debug('Invalid move (ko)')
+			except rules.SuicideError:
+				debug('Invalid move (suicide)')
+			except rules.InvalidMove:
+				debug('Invalid move')
 
 class GameGUIPygame():
 	'''GUI for playing a game of go'''
@@ -150,10 +170,13 @@ class GameGUIPygame():
 		self.game_view.on_click(pos)
 
 
-if __name__ == '__main__':
-	#Test the display stuff only
+# Get a logger for this module
+debug,info,warning,error = multilogger.logFunctions(__name__)
 
-	# Monkey patch the on click behaviour
+#Test the display stuff only
+if __name__ == '__main__':
+
+	# Change on click behaviour
 	def on_click(self,pos):
 		'''Highlight the nearest point'''
 		pos = self.board_to_grid(pos)
@@ -169,7 +192,7 @@ if __name__ == '__main__':
 	grid = geometry.FoldedGrid(5,5,1,[('N','S'),('E','W')])
 	thegame = game.TwoPlayerGame(board.Board(grid))
 	colors = {thegame.black:(0,0,0),thegame.white:(100,100,100)}
-	view = GridViewPygame(thegame.board.grid, screen, zoom_to_fit=True, join_connected=True, highlight_connected=True, colors=colors)
+	view = GridViewPygame(thegame.board.grid, screen, zoom_to_fit=True, join_connected=True, highlight_connected=True, colors=colors, mainScreen=True)
 
 	#Handle events
 	while True:
