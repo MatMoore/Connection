@@ -11,12 +11,12 @@ import rules
 class GridViewPygame(observer.Observable):
 	'''Draw grids using pygame'''
 
-	def __init__(self, grid, surface, scale=None, rotation=0, zoom_to_fit=False, join_connected=False, highlight_connected=True, colors = {}, mainScreen=False):
+	def __init__(self, grid, surface, scale=None, rotation=0, zoom_to_fit=False, join_connected=False, highlight_connected=True, colors = {}, mainScreen=False, offset=(20,20)):
 		observer.Observable.__init__(self)
 		grid_width = max([x for x,y in grid.points])
 		grid_height = max([y for x,y in grid.points])
-		width = surface.get_width()
-		height = surface.get_height()
+		width = surface.get_width()-2*offset[0]
+		height = surface.get_height()-2*offset[1]
 
 		if zoom_to_fit:
 			scale = min(width/float(grid_width), height/float(grid_height))
@@ -24,6 +24,7 @@ class GridViewPygame(observer.Observable):
 			scale = 1
 
 		self.scale = scale
+		self.offset = offset
 		self.grid = grid
 		self.surface = surface
 		self.grid.register_listener(self.draw)
@@ -55,19 +56,14 @@ class GridViewPygame(observer.Observable):
 		if self.join_connected:
 			for a,bs in self.grid.connections.items():
 				for b in bs:
-					ax,ay = a
-					bx,by = b
-					ax *= scale
-					ay *= scale
-					bx *= scale
-					by *= scale
+					ax,ay = self.grid_to_view(a)
+					bx,by = self.grid_to_view(b)
 					pygame.draw.line(self.surface, (0,0,0), (ax,ay), (bx,by),4)
 
 		for p in self.grid.points:
 			x,y = p
 			point = self.grid.get_point(x,y)
-			x *= scale
-			y *= scale
+			x,y = self.grid_to_view(p)
 
 			if point in self.colors:
 				pygame.draw.circle(self.surface, self.colors[point], (int(x),int(y)), 15)
@@ -76,9 +72,8 @@ class GridViewPygame(observer.Observable):
 
 		if self.highlight_connected and self.highlighted:
 			debug('Highlighting connections for %s' % str(self.highlighted))
-			for x,y in self.grid.connections[self.highlighted]:
-				x *= scale
-				y *= scale
+			for c in self.grid.connections[self.highlighted]:
+				x,y = self.grid_to_view(c)
 				pygame.draw.circle(self.surface, (0,255,0), (int(x),int(y)), 2)
 
 		if self.mainScreen:
@@ -86,11 +81,18 @@ class GridViewPygame(observer.Observable):
 
 		self.notify()
 
-	def board_to_grid(self, pos):
+	def grid_to_view(self,pos):
+		'''Convert grid coordinated to view ones'''
+		x,y = pos
+		ox,oy = self.offset
+		return(x*self.scale+ox, y*self.scale+oy)
+
+	def view_to_grid(self, pos):
 		'''Convert view coordinates to grid ones'''
 		x,y = pos
-		x = int(round(x/self.scale))
-		y = int(round(y/self.scale))
+		ox,oy = self.offset
+		x = int(round((x-ox)/self.scale))
+		y = int(round((y-oy)/self.scale))
 		return (x,y)
 
 	def on_click(self, pos):
@@ -115,7 +117,7 @@ class GameViewPygame(GridViewPygame):
 		or y > self.surface.get_height():
 			return
 
-		pos = self.board_to_grid(pos)
+		pos = self.view_to_grid(pos)
 
 		if self.controller.accept_local_moves:
 			try:
@@ -179,7 +181,7 @@ if __name__ == '__main__':
 	# Change on click behaviour
 	def on_click(self,pos):
 		'''Highlight the nearest point'''
-		pos = self.board_to_grid(pos)
+		pos = self.view_to_grid(pos)
 		self.highlighted = pos
 		self.draw(False,True)
 	GridViewPygame.on_click = on_click
