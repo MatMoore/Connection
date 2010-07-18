@@ -62,11 +62,11 @@ class GridViewPygame(observer.Observable):
 
 		for p in self.grid.points:
 			x,y = p
-			point = self.grid.get_point(x,y)
+			value = self.grid.get_point(x,y)
 			x,y = self.grid_to_view(p)
 
-			if point in self.colors:
-				pygame.draw.circle(self.surface, self.colors[point], (int(x),int(y)), 15)
+			if value is not None and value[0] in self.colors:
+				pygame.draw.circle(self.surface, self.colors[value[0]], (int(x),int(y)), 15)
 			else:
 				pygame.draw.circle(self.surface, (0,0,0), (int(x),int(y)), 5)
 

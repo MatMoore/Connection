@@ -5,6 +5,12 @@ from observer import Observable
 from geometry import RectangularGrid
 import multilogger
 
+# Define constants used for describing the state of a board point.
+# Grid values are either None (empty) or a tuple of (player, state)
+STONE      = 0
+DEAD_STONE = 1
+TERRITORY  = 2
+
 # Define some exceptions
 class BoardError(Exception):
 	'''Exceptions thrown on invalid board operations'''
@@ -59,7 +65,7 @@ class Board(Observable):
 		self.check_free_space(move)
 
 		# Place the stone
-		self.grid.set_point(move.position[0], move.position[1], move.player)
+		self.grid.set_point(move.position[0], move.position[1], (move.player, STONE))
 
 	def check_free_space(self,move):
 		'''Check to see if the space exists and is empty'''
@@ -90,7 +96,7 @@ class Board(Observable):
 		'''Remove any stones which are captured by this move'''
 		already_checked = []
 		for position in self.neighbours(move.position):
-			if (position not in already_checked) and (self.get_point(position) is not move.player):
+			if (position not in already_checked) and not self.is_empty(position) and (self.get_point(position)[0] is not move.player):
 
 				# Start a new group
 				group = Group(self,position)
@@ -111,6 +117,10 @@ class Board(Observable):
 		'''Return the group of stones at a given position'''
 		return Group(self,position)
 
+	def markTerritory(self):
+		'''Find empty space surrounded by a single player, and mark it as that player's territory. Assumes all stones are live'''
+		pass
+
 class Group:
 	'''A group of stones which are connected'''
 	def __init__(self,board,position):
@@ -119,7 +129,7 @@ class Group:
 		self.board = board
 		start_point = board.get_point(position)
 		if start_point is not None:
-			self.owner = start_point
+			self.owner = start_point[0]
 			self.stones.append(position)
 			self.find_connected_stones(position)
 
@@ -140,7 +150,7 @@ class Group:
 			if next not in self.stones:
 				if self.board.is_empty(next):
 					self.liberties += 1
-				elif self.board.get_point(next) is self.owner:
+				elif self.board.get_point(next)[0] is self.owner:
 					self.stones.append(next)
 					self.find_connected_stones(next)
 

@@ -24,7 +24,7 @@ class MoveTest(GameTest):
 		self.game.play_move((0,0),self.game.black)
 		topleft = self.game.board.get_point((0,0))
 		self.assertTrue(topleft is not None)
-		self.assertEquals(topleft, self.game.black)
+		self.assertEquals(topleft, (self.game.black,STONE))
 
 	def testOccupiedSquare(self):
 		'''Check that the stone is not placed if the square is already occupied'''
