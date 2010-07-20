@@ -65,7 +65,7 @@ class Board(Observable):
 		self.check_free_space(move)
 
 		# Place the stone
-		self.grid.set_point(move.position[0], move.position[1], (move.player, STONE))
+		self.set_point(move.position, (move.player, STONE))
 
 	def check_free_space(self,move):
 		'''Check to see if the space exists and is empty'''
@@ -76,7 +76,7 @@ class Board(Observable):
 		if self.is_empty(pos):
 				raise BoardError('Tried to remove a stone that doesn\'t exist')
 
-		self.grid.set_point(pos[0], pos[1], None)
+		self.set_point(pos, None)
 
 	def get_point(self, pos):
 		try:
@@ -85,8 +85,17 @@ class Board(Observable):
 			raise NonExistantPointError
 		return point
 
+	def set_point(self, pos, value):
+		try:
+			self.grid.set_point(pos[0],pos[1],value)
+		except:
+			raise NonExistantPointError
+
 	def is_empty(self, pos):
-		return (self.get_point(pos) is None)
+		point = self.get_point(pos)
+		if point is None:
+			return True
+		return (point[1] != STONE)
 
 	def neighbours(self,pos):
 		'''Returns a list of positions of the neighbouring squares'''
@@ -117,9 +126,58 @@ class Board(Observable):
 		'''Return the group of stones at a given position'''
 		return Group(self,position)
 
-	def markTerritory(self):
-		'''Find empty space surrounded by a single player, and mark it as that player's territory. Assumes all stones are live'''
+	def mark_territory(self):
+		'''Find empty space surrounded by a single player, and mark it as that player's territory. Assumes all stones are live unless marked otherwise'''
 		pass
+
+	def toggle_dead(self,position):
+		'''Toggles whether a group is marked dead or not. Assumes that territory is marked before this method is called, but markings are not guarenteed to be correct afterwards. It would not make sense to have dead stones in your own territory, so we treat any groups that are only seperated by the player's territory as linked here.'''
+
+		here = self.get_point(position)
+		if here is None:
+			return
+
+		player,state = here
+		if state == STONE:
+			new_state = DEAD_STONE
+		elif state == DEAD_STONE:
+			new_state = STONE
+		else:
+			return
+
+		self.set_point(position, (player, new_state))
+
+		neighbours = self.neighbours(position)
+		stones = []
+		checked = []
+
+		while True:
+			if not neighbours:
+				break
+
+			next = neighbours.pop()
+
+			# Don't check the same point twice
+			if next in checked:
+				continue
+			if next in stones:
+				continue
+			checked.append(next)
+
+			# Empty space signifies the border of the group
+			if self.get_point(next) is None:
+				continue
+
+			owner,state = self.get_point(next)
+			if owner is player:
+				neighbours.extend(self.neighbours(next))
+
+				if state in (STONE, DEAD_STONE):
+					self.set_point(next,(player, new_state))
+
+	def guessDeadGroups(self):
+		pass
+
 
 class Group:
 	'''A group of stones which are connected'''

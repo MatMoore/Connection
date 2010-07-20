@@ -78,11 +78,10 @@ class Grid(Observable):
 			raise Exception('Bad grid coordinates')
 
 	def set_point(self, x, y, val):
-		try:
-			self.points[(x,y)] = val
-			self.notify() # Notify observers on changes
-		except KeyError:
+		if (x,y) not in self.points:
 			raise Exception('Bad grid coordinates')
+		self.points[(x,y)] = val
+		self.notify() # Notify observers on changes
 
 	def get_point(self, x, y):
 		try:

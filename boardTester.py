@@ -4,6 +4,7 @@
 import unittest
 from board import *
 from game import Player,Move
+import copy
 
 class BoardSizeTest(unittest.TestCase):
 	'''Check that different sized boards can be created'''
@@ -81,6 +82,121 @@ class GroupTest(BoardTest):
 		self.board.place_stone(Move((1,2),self.white))
 		group1 = Group(self.board,(0,0))
 		self.assertEquals(group1.liberties, 0)
+	
+	def testMarkingDeadStone(self):
+		'''Mark as dead a single black stone'''
+		# b w w
+		# . w w
+		# w w w
+		self.board.place_stone(Move((0,0),self.black))
+		self.board.place_stone(Move((0,2),self.white))
+		self.board.place_stone(Move((1,2),self.white))
+		self.board.place_stone(Move((1,1),self.white))
+		self.board.place_stone(Move((1,0),self.white))
+		self.board.place_stone(Move((2,0),self.white))
+		self.board.place_stone(Move((2,1),self.white))
+		self.board.place_stone(Move((2,2),self.white))
+		self.board.toggle_dead((0,0))
+		player,state = self.board.get_point((0,0))
+		self.assertEquals(state, DEAD_STONE)
+		self.assertEquals(player, self.black)
+	
+	def testMarkingDeadGroup(self):
+		'''Mark as dead a connected black group'''
+		# b w w
+		# b . w
+		# w w w
+		self.board.place_stone(Move((0,0),self.black))
+		self.board.place_stone(Move((0,1),self.black))
+		self.board.place_stone(Move((0,2),self.white))
+		self.board.place_stone(Move((1,2),self.white))
+		self.board.place_stone(Move((1,0),self.white))
+		self.board.place_stone(Move((2,0),self.white))
+		self.board.place_stone(Move((2,1),self.white))
+		self.board.place_stone(Move((2,2),self.white))
+		self.board.toggle_dead((0,0))
+		player,state = self.board.get_point((0,0))
+		self.assertEquals(state, DEAD_STONE)
+		self.assertEquals(player, self.black)
+		player,state = self.board.get_point((0,1))
+		self.assertEquals(state, DEAD_STONE)
+		self.assertEquals(player, self.black)
+		player,state = self.board.get_point((1,0))
+		self.assertEquals(state, STONE)
+		self.assertEquals(player, self.white)
+		self.assertTrue(self.board.get_point((1,1)) is None)
+
+	def testUnmarkingDeadGroup(self):
+		'''Unmark a connected group currently marked dead'''
+		# b w w
+		# b . w
+		# w w w
+		self.board.place_stone(Move((0,0),self.black))
+		self.board.place_stone(Move((0,1),self.black))
+		self.board.place_stone(Move((0,2),self.white))
+		self.board.place_stone(Move((1,2),self.white))
+		self.board.place_stone(Move((1,0),self.white))
+		self.board.place_stone(Move((2,0),self.white))
+		self.board.place_stone(Move((2,1),self.white))
+		self.board.place_stone(Move((2,2),self.white))
+		board_copy = copy.copy(self.board)
+		self.board.toggle_dead((0,0))
+		self.board.toggle_dead((0,1))
+		player,state = self.board.get_point((0,0))
+		self.assertEquals(state, STONE)
+		self.assertEquals(player, self.black)
+		player,state = self.board.get_point((0,1))
+		self.assertEquals(state, STONE)
+		self.assertEquals(player, self.black)
+		self.assertEquals(self.board, board_copy)
+
+	def testMarkingDeadSubgroup(self):
+		'''Mark as dead distinct black groups linked through black territory'''
+		# b . b w
+		# . b w w
+		# b b w w
+		# w w w w
+		self.board.place_stone(Move((0,0),self.black))
+		self.board.place_stone(Move((0,2),self.black))
+		self.board.place_stone(Move((0,3),self.white))
+		self.board.place_stone(Move((1,1),self.black))
+		self.board.place_stone(Move((1,2),self.black))
+		self.board.place_stone(Move((1,3),self.white))
+		self.board.place_stone(Move((2,0),self.black))
+		self.board.place_stone(Move((2,1),self.white))
+		self.board.place_stone(Move((2,2),self.white))
+		self.board.place_stone(Move((2,3),self.white))
+		self.board.place_stone(Move((3,0),self.white))
+		self.board.place_stone(Move((3,1),self.white))
+		self.board.place_stone(Move((3,2),self.white))
+		self.board.place_stone(Move((3,3),self.white))
+		# Mark territory
+		self.board.set_point((0,1),(self.black,TERRITORY))
+		self.board.set_point((1,0),(self.black,TERRITORY))
+		self.board.toggle_dead((0,0))
+		player,state = self.board.get_point((0,0))
+		self.assertEquals(state, DEAD_STONE)
+		self.assertEquals(player, self.black)
+		player,state = self.board.get_point((0,2))
+		self.assertEquals(state, DEAD_STONE)
+		self.assertEquals(player, self.black)
+		player,state = self.board.get_point((2,0))
+		self.assertEquals(state, DEAD_STONE)
+		self.assertEquals(player, self.black)
+		player,state = self.board.get_point((1,1))
+		self.assertEquals(state, DEAD_STONE)
+		self.assertEquals(player, self.black)
+		player,state = self.board.get_point((1,2))
+		self.assertEquals(state, DEAD_STONE)
+		self.assertEquals(player, self.black)
+
+	def testMarkingDistinctGroup(self):
+		'''Mark as dead distinct black groups that are divided by neutral territory'''
+		# b b w
+		# . . w
+		# b b w
+		# w w w
+		pass
 
 def suite():
 	suite1 = unittest.makeSuite(BoardSizeTest)
