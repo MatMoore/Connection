@@ -9,7 +9,6 @@ import multilogger
 # Grid values are either None (empty) or a tuple of (player, state)
 STONE      = 0
 DEAD_STONE = 1
-TERRITORY  = 2
 
 # Define some exceptions
 class BoardError(Exception):
@@ -34,6 +33,7 @@ class Board(Observable):
 	def __init__(self,grid):
 		Observable.__init__(self)
 		self.grid = grid
+		self.territory = {}
 
 	def __eq__(self, other):
 		'''Two boards are the same if all squares have the same state'''
@@ -50,6 +50,10 @@ class Board(Observable):
 			newgrid.connections[i] = j
 
 		return Board(newgrid)
+
+	def positions(self):
+		'''Iterate over valid board coordinates'''
+		return self.grid.get_positions()
 
 	def points(self):
 		'''Iterator yielding tuples representing the coordinates of the points and their values'''
@@ -77,6 +81,16 @@ class Board(Observable):
 				raise BoardError('Tried to remove a stone that doesn\'t exist')
 
 		self.set_point(pos, None)
+
+	def get_territory(self, pos):
+		if pos in self.territory:
+			return self.territory[pos]
+
+	def set_territory(self, pos, player=None):
+		self.territory[pos] = player
+
+	def reset_territory(self):
+		self.territory = {}
 
 	def get_point(self, pos):
 		try:
@@ -128,7 +142,54 @@ class Board(Observable):
 
 	def mark_territory(self):
 		'''Find empty space surrounded by a single player, and mark it as that player's territory. Assumes all stones are live unless marked otherwise'''
-		pass
+		self.reset_territory()
+		done = [] # points which have been checked already
+
+		# Look for areas of empty spaces
+		for pos in self.positions():
+
+			if not self.is_empty(pos):
+				continue
+
+			# Mark already checked points
+			if pos in done:
+				continue
+			else:
+				done.append(pos)
+
+			surroundingPlayer = None
+			area = [pos]
+
+			# Make a stack of unchecked points in the area
+			unchecked = self.neighbours(pos)
+
+			# Grow the area until we reach the border.
+			# If it touches no players or >1 players it's neutral
+			# Otherwise, mark it as the surrounding player's territory
+			while True:
+
+				# If we've checked all the points in this area, continue looking for more areas
+				if not unchecked:
+					if surroundingPlayer is not None:
+						for pos in area:
+							self.set_territory(pos,surroundingPlayer)
+					break
+	
+				nextPos = unchecked.pop()
+
+				if nextPos in area:
+					continue
+
+				if not self.is_empty(nextPos):
+					player,state = self.get_point(nextPos)
+					if surroundingPlayer is not None and surroundingPlayer is not player:
+						break
+					elif surroundingPlayer is None:
+						surroundingPlayer = player
+				else:
+					area.append(nextPos)
+					done.append(nextPos)
+					unchecked.extend(self.neighbours(nextPos))
 
 	def toggle_dead(self,position):
 		'''Toggles whether a group is marked dead or not. Assumes that territory is marked before this method is called, but markings are not guarenteed to be correct afterwards. It would not make sense to have dead stones in your own territory, so we treat any groups that are only seperated by the player's territory as linked here.'''
@@ -166,6 +227,10 @@ class Board(Observable):
 
 			# Empty space signifies the border of the group
 			if self.get_point(next) is None:
+
+				# Player territory is ok
+				if self.get_territory(next) is player:
+					neighbours.extend(self.neighbours(next))
 				continue
 
 			owner,state = self.get_point(next)

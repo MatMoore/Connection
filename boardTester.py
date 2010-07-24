@@ -171,8 +171,8 @@ class GroupTest(BoardTest):
 		self.board.place_stone(Move((3,2),self.white))
 		self.board.place_stone(Move((3,3),self.white))
 		# Mark territory
-		self.board.set_point((0,1),(self.black,TERRITORY))
-		self.board.set_point((1,0),(self.black,TERRITORY))
+		self.board.set_territory((0,1),self.black)
+		self.board.set_territory((1,0),self.black)
 		self.board.toggle_dead((0,0))
 		player,state = self.board.get_point((0,0))
 		self.assertEquals(state, DEAD_STONE)
@@ -196,6 +196,46 @@ class GroupTest(BoardTest):
 		# . . w
 		# b b w
 		# w w w
+		pass
+
+	def testTerritory(self):
+		# b . w
+		# . b w
+		# b w .
+		self.board.place_stone(Move((0,0),self.black))
+		self.board.place_stone(Move((0,2),self.black))
+		self.board.place_stone(Move((1,1),self.black))
+		self.board.place_stone(Move((1,2),self.white))
+		self.board.place_stone(Move((2,0),self.white))
+		self.board.place_stone(Move((2,1),self.white))
+		self.board.mark_territory()
+		self.assertTrue(self.board.get_territory((0,1)) is self.black)
+		self.assertTrue(self.board.get_territory((1,0)) is None)
+		self.assertTrue(self.board.get_territory((2,2)) is None)
+
+	def testBigTerritory(self):
+		# b . w
+		# . b w
+		# . b w
+		# b w .
+		# w . .
+		self.board.place_stone(Move((0,0),self.black))
+		self.board.place_stone(Move((0,3),self.black))
+		self.board.place_stone(Move((0,4),self.white))
+		self.board.place_stone(Move((1,1),self.black))
+		self.board.place_stone(Move((1,2),self.black))
+		self.board.place_stone(Move((1,3),self.white))
+		self.board.place_stone(Move((2,0),self.white))
+		self.board.place_stone(Move((2,1),self.white))
+		self.board.place_stone(Move((2,2),self.white))
+		self.board.mark_territory()
+		self.assertTrue(self.board.get_territory((0,1)) is self.black)
+		self.assertTrue(self.board.get_territory((0,2)) is self.black)
+		self.assertTrue(self.board.get_territory((1,0)) is None)
+		self.assertTrue(self.board.get_territory((2,3)) is self.white)
+
+
+	def testTerritoryDeadStones(self):
 		pass
 
 def suite():

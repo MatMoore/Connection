@@ -92,6 +92,9 @@ class Grid(Observable):
 	def get_points(self):
 		return self.points.iteritems()
 
+	def get_positions(self):
+		return self.points.iterkeys()
+
 	def get_connections(self):
 		return self.connections.iteritems()
 
