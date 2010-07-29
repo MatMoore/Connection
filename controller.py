@@ -61,14 +61,18 @@ class Controller(Observable):
 	def pass_turn(self):
 		if self.game is None:
 			return
+		player = self.game.next_player
 		if player in self.local_players:
+			debug('Pass')
 			self.game.pass_turn()
 			# TODO fix game to accept player for the pass/resign functions
 
 	def resign(self):
 		if self.game is None:
 			return
+		player = self.game.next_player
 		if player in self.local_players:
+			debug('Resign')
 			self.game.resign()
 
 # Get a logger for this module

@@ -7,6 +7,7 @@ import sys
 import observer
 import multilogger
 import rules
+import wx
 
 class GridViewPygame(observer.Observable):
 	'''Draw grids using pygame'''
@@ -171,6 +172,109 @@ class GameGUIPygame():
 		x,y = self.screen_to_view(pos)
 		self.game_view.on_click(pos)
 
+
+class BoardViewWx(wx.Panel):
+	'''Show the board using wxPython'''
+
+	def __init__(self, colors, parent=None, id=wx.ID_ANY):
+		wx.Panel.__init__(self, parent, id)
+		self.colors = colors
+
+	def GridToView(self,pos):
+		'''Convert grid coordinated to view ones'''
+		x,y = pos
+		ox,oy = self.offset
+		return(x*self.scale+ox, y*self.scale+oy)
+
+	def ViewToGrid(self, pos):
+		'''Convert view coordinates to grid ones'''
+		x,y = pos
+		ox,oy = self.offset
+		x = int(round((x-ox)/self.scale))
+		y = int(round((y-oy)/self.scale))
+		return (x,y)
+
+	def OnClick(self, pos):
+		pass
+
+
+class PlayableBoardWx(BoardViewWx):
+	'''Playable board using wxPython'''
+	def __init__(self, controller, colors, parent=None, id=wx.ANY_ID):
+		BoardViewWx.__init__(self, colors, parent, id)
+		self.controller = controller
+
+	def OnClick(self, pos):
+		'''Callback called when the user clicks in the window'''
+		# Ignore clicks outside the board
+		# TODO: fix board to include all the top/left of stones properly
+		x,y = pos
+
+		if x < 0 \
+		or y < 0 \
+		or x > self.surface.get_width() \
+		or y > self.surface.get_height():
+			return
+
+		pos = self.ViewToGrid(pos)
+
+		if self.controller.accept_local_moves:
+			try:
+				debug('Playing %s,%s...' % pos)
+				self.controller.play_move(pos)
+			except game.NotYourTurnError:
+				debug('Not your turn')
+			except board.BoardError:
+				debug('Cannot place a stone there')
+			except rules.KoError:
+				debug('Invalid move (ko)')
+			except rules.SuicideError:
+				debug('Invalid move (suicide)')
+			except rules.InvalidMove:
+				debug('Invalid move')
+
+
+class GameViewWx(wx.Frame):
+	def __init__(self,game_controller,colors,parent=None,id=wx.ID_ANY,title='Go'):
+		wx.Frame.__init__(self,parent,id,title,size=(360,400))
+		self.panel = wx.Panel(self, wx.ID_ANY)
+		
+		self.game_controller = game_controller
+#		board = BoardImage(game,self.panel,humanPlayers=localPlayers)
+		
+		mainSizer = wx.BoxSizer(wx.VERTICAL)
+#		mainSizer.Add(board,0,wx.FIXED_MINSIZE)
+		
+		buttonSizer = wx.BoxSizer(wx.HORIZONTAL)
+		passButton = wx.Button(self.panel, wx.ID_ANY, 'Pass')
+		resignButton = wx.Button(self.panel, wx.ID_ANY, 'Resign')
+		buttonSizer.Add(passButton, 1, wx.ALL|wx.EXPAND)
+		buttonSizer.Add(resignButton, 1, wx.ALL|wx.EXPAND)
+		mainSizer.Add(buttonSizer,1,wx.ALL|wx.EXPAND)
+
+		self.panel.SetSizer(mainSizer)
+		
+		passButton.Bind(wx.EVT_BUTTON, self.PassButtonClick)
+		resignButton.Bind(wx.EVT_BUTTON, self.ResignButtonClick)
+
+	def PassButtonClick(self,event):
+		self.game_controller.pass_turn()
+
+	def ResignButtonClick(self,event):
+		self.game_controller.resign()
+
+class GoApp(wx.App):
+	def __init__(self, game_controller, colors):
+		self.game_controller = game_controller
+		self.colors = colors
+		wx.App.__init__(self)
+
+	def OnInit(self):
+		'''For now, this will create a game view on startup. Later we will create all the widgets for starting games, and we will create GameViews when games are started.'''
+		frame = GameViewWx(self.game_controller, self.colors)
+		frame.Show(True)
+		self.SetTopWindow(frame)
+		return True
 
 # Get a logger for this module
 debug,info,warning,error = multilogger.logFunctions(__name__)
