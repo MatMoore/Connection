@@ -176,7 +176,8 @@ class GameGUIPygame():
 class BoardViewWx(wx.Panel):
 	'''Show the board using wxPython'''
 
-	def __init__(self, grid, colors, parent=None, id=wx.ID_ANY, bgColour=(255,255,255), borderWidth=0.5):
+	def __init__(self, grid, colors, parent=None, id=wx.ID_ANY, bgColour=(255,255,255), borderWidth=0.75, stoneSpacing = 0.1, pointSize = 0.2, highlightColor = (255,255,0)):
+		'''The border width defines an empty space bordering the outer edges, given in grid points. Stone spacing is the width in grid points of the space between neighbouring stones. Point size is given as a fraction of stone size.'''
 		wx.Panel.__init__(self, parent, id, style=wx.FULL_REPAINT_ON_RESIZE)
 		self.SetBackgroundColour(bgColour)
 		self.colors = colors
@@ -186,12 +187,20 @@ class BoardViewWx(wx.Panel):
 		self.Bind(wx.EVT_ERASE_BACKGROUND, self.OnPaintBg)
 		self.SetMinSize((100,100))
 
-		# Assumes an origin of 0,0
+		# Tuples of pos, player indicating what the player is hovering over
+		self._clicked = None
+		self._hover = None
+
+		self.stoneSpacing = stoneSpacing
+		self.pointSize = pointSize
+		self.highlightColor = highlightColor
+
+		# Size of the board in grid spacings. Assumes an origin of 0,0
 		self.grid_width = max([x for x,y in grid.points])
 		self.grid_height = max([y for x,y in grid.points])
 
 		self.borderWidth = borderWidth # width of border in grid units
-		self.BoardChanged()
+		self.BoardChanged() # Make sure the board is drawn
 		debug('Created board view')
 
 	def BoardChanged(self,*args):
@@ -206,44 +215,47 @@ class BoardViewWx(wx.Panel):
 		'''Currently redraws the whole board. This could be optimised later to redraw changed areas only'''
 		debug('Drawing board')
 #		dc = wx.AutoBufferedPaintDC(self) # device context
-		dc = wx.BufferedPaintDC(self) # device context
+		if self.IsDoubleBuffered():
+			debug('Using PaintDC')
+			dc = wx.PaintDC(self)
+		else:
+			debug('Using BufferedPaintDC')
+			dc = wx.BufferedPaintDC(self) # device context
 		dc.Clear()
 		gc = wx.GraphicsContext.Create(dc) # graphics context
 
-#		region = self.GetUpdateRegion()
+		stoneSize = self.StoneSize()
+		pointSize = self.pointSize * stoneSize
 
+		# Draw hovering stone
+		hoverPos = None
+		if self._hover:
+			hoverPos,player = self._hover
+		elif self._clicked:
+			hoverPos,player = self._clicked
+		if hoverPos is not None:
+			x,y = self.GridToView(hoverPos)
+			color = self.colors[player]
+			gc.SetPen(wx.Pen("black", 0))
+			gc.SetBrush(wx.Brush(color))
+			gc.DrawEllipse(x-stoneSize/2, y-stoneSize/2, stoneSize, stoneSize)
 
-		# Draw background. TODO handle this seperately in an OnEraseBackgroundHandler
-
-		# This actually draws the line for each connection twice but never mind.
-		# It also doesn't care about whether edge connections should be visible.
-		#for a,bs in self.grid.connections.items():
-		#	for b in bs:
-		#		ax,ay = self.grid_to_view(a)
-		#		bx,by = self.grid_to_view(b)
-		#		pygame.draw.line(self.surface, (0,0,0), (ax,ay), (bx,by),4)
-
-		gc.SetPen(wx.Pen("black", 1))
-		gc.SetBrush(wx.Brush("pink"))
-
-		# Draw points
+		# Draw stones / points
 		for p in self.grid.points:
+			x,y = p
+			value = self.grid.get_point(x,y)
 			x,y = self.GridToView(p)
-			debug('drawing at %d,%d' %(x,y))
-			gc.DrawEllipse(x, y, 2, 2)
-		#gc.DrawEllipse(100, 100, 5, 5)
 
-		# Draw stones
-#		for p in self.grid.points:
-#			x,y = p
-#			value = self.grid.get_point(x,y)
-#			x,y = self.grid_to_view(p)
-#
-#			if value is not None and value[0] in self.colors:
-#				pygame.draw.circle(self.surface, self.colors[value[0]], (int(x),int(y)), 15)
-#			else:
-#				pygame.draw.circle(self.surface, (0,0,0), (int(x),int(y)), 5)
-#
+			if value is not None and value[0] in self.colors:
+				player, dead = value
+				gc.SetPen(wx.Pen(self.colors[player],0))
+				gc.SetBrush(wx.Brush(self.colors[player]))
+				gc.DrawEllipse(x-stoneSize/2, y-stoneSize/2, stoneSize, stoneSize)
+			elif p != hoverPos:
+				gc.SetPen(wx.Pen("black", 0))
+				gc.SetBrush(wx.Brush("black"))
+				gc.DrawEllipse(x-pointSize/2, y-pointSize/2, pointSize, pointSize)
+
 #		if self.highlight_connected and self.highlighted:
 #			debug('Highlighting connections for %s' % str(self.highlighted))
 #			for c in self.grid.connections[self.highlighted]:
@@ -254,12 +266,17 @@ class BoardViewWx(wx.Panel):
 		'''Convert grid coordinated to view ones'''
 		x,y = pos
 		width,height = self.GetClientSizeTuple()
-		debug('%d,%d' % (width,height))
 		grid_width = self.grid_width + 2*self.borderWidth
 		grid_height = self.grid_height + 2*self.borderWidth
 		scale = min(width/float(grid_width), height/float(grid_height))
-		debug('scale=%f' %scale)
 		return ((x+self.borderWidth)*scale, (y+self.borderWidth)*scale)
+
+	def StoneSize(self):
+		width,height = self.GetClientSizeTuple()
+		grid_width = self.grid_width + 2*self.borderWidth
+		grid_height = self.grid_height + 2*self.borderWidth
+		scale = min(width/float(grid_width), height/float(grid_height))
+		return max(4, scale*(1 - self.stoneSpacing))
 
 	def ViewToGrid(self, pos):
 		'''Convert view coordinates to grid ones'''
@@ -270,10 +287,15 @@ class BoardViewWx(wx.Panel):
 		scale = min(width/float(grid_width), height/float(grid_height))
 		x = int(round(x/scale-self.borderWidth))
 		y = int(round(y/scale-self.borderWidth))
-		return (x,y)
 
-	def OnClick(self, pos):
-		pass
+		# Return None if out of range
+		if x > self.grid_width \
+				or y > self.grid_height \
+				or x < 0 \
+				or y < 0:
+			return None
+
+		return (x,y)
 
 
 class PlayableBoardWx(BoardViewWx):
@@ -281,37 +303,67 @@ class PlayableBoardWx(BoardViewWx):
 	def __init__(self, controller, colors, parent=None, id=wx.ID_ANY):
 		BoardViewWx.__init__(self, controller.game.board.grid, colors, parent, id)
 		self.controller = controller
+		self.Bind(wx.EVT_LEFT_UP, self.MouseUp)
+		self.Bind(wx.EVT_LEFT_DOWN, self.MouseDown)
+		self.Bind(wx.EVT_MOTION, self.MouseMove)
 
-	def OnClick(self, pos):
+	def MouseDown(self, event):
+		event.Skip()
+		pos = event.GetPositionTuple()
+		pos = self.ViewToGrid(pos)
+
+		# Ignore clicks in the border area
+		if pos:
+			x,y = pos
+			self._clicked = pos,self.controller.game.next_player
+			self._hover = None
+			debug('clicked %d,%d' % pos)
+			self.Refresh()
+
+	def MouseMove(self, event):
+		pos = event.GetPositionTuple()
+		pos = self.ViewToGrid(pos)
+
+		# Ignore clicks in the border area
+		if pos:
+			x,y = pos
+			if not self._clicked:
+				self._hover = pos,self.controller.game.next_player
+			self.Refresh()
+
+	def MouseUp(self, event):
 		'''Callback called when the user clicks in the window'''
-		# Ignore clicks outside the board
-		# TODO: fix board to include all the top/left of stones properly
-		x,y = pos
-		debug('Clicked %d,%d' %pos)
+		pos = event.GetPositionTuple()
+		pos = self.ViewToGrid(pos)
 
-#		if x < 0 \
-#		or y < 0 \
-#		or x > self.surface.get_width() \
-#		or y > self.surface.get_height():
-#			return
-#
-#		pos = self.ViewToGrid(pos)
-#
-#		if self.controller.accept_local_moves:
-#			try:
-#				debug('Playing %s,%s...' % pos)
-#				self.controller.play_move(pos)
-#			except game.NotYourTurnError:
-#				debug('Not your turn')
-#			except board.BoardError:
-#				debug('Cannot place a stone there')
-#			except rules.KoError:
-#				debug('Invalid move (ko)')
-#			except rules.SuicideError:
-#				debug('Invalid move (suicide)')
-#			except rules.InvalidMove:
-#				debug('Invalid move')
+		# Ignore clicks in the border area
+		if pos:
+			x,y = pos
 
+			# Don't place a stone if the player clicked and dragged to a different point
+			if self._clicked is not None and self._clicked[0] != pos:
+				self._clicked = None
+				self.Refresh()
+				return
+
+			debug('released at %d,%d' % (x,y))
+
+			if self.controller.accept_local_moves:
+				try:
+					debug('Playing %s,%s...' % pos)
+					self.controller.play_move(pos)
+				except game.NotYourTurnError:
+					debug('Not your turn')
+				except board.BoardError:
+					debug('Cannot place a stone there')
+				except rules.KoError:
+					debug('Invalid move (ko)')
+				except rules.SuicideError:
+					debug('Invalid move (suicide)')
+				except rules.InvalidMove:
+					debug('Invalid move')
+
+			self._clicked = None
 
 class GameViewWx(wx.Frame):
 	def __init__(self,game_controller,colors,parent=None,id=wx.ID_ANY,title='Go'):
