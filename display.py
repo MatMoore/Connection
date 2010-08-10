@@ -176,22 +176,100 @@ class GameGUIPygame():
 class BoardViewWx(wx.Panel):
 	'''Show the board using wxPython'''
 
-	def __init__(self, colors, parent=None, id=wx.ID_ANY):
-		wx.Panel.__init__(self, parent, id)
+	def __init__(self, grid, colors, parent=None, id=wx.ID_ANY, bgColour=(255,255,255), borderWidth=0.5):
+		wx.Panel.__init__(self, parent, id, style=wx.FULL_REPAINT_ON_RESIZE)
+		self.SetBackgroundColour(bgColour)
 		self.colors = colors
+		self.grid = grid
+		self.grid.register_listener(self.BoardChanged)
+		self.Bind(wx.EVT_PAINT, self.OnPaint)
+		self.Bind(wx.EVT_ERASE_BACKGROUND, self.OnPaintBg)
+		self.SetMinSize((100,100))
+
+		# Assumes an origin of 0,0
+		self.grid_width = max([x for x,y in grid.points])
+		self.grid_height = max([y for x,y in grid.points])
+
+		self.borderWidth = borderWidth # width of border in grid units
+		self.BoardChanged()
+		debug('Created board view')
+
+	def BoardChanged(self,*args):
+		self.Refresh() # trigger a paint event
+		self.Update() # deal with it straight away
+
+	def OnPaintBg(self, event):
+		# Skip this and do all background stuff in OnPaint
+		pass
+
+	def OnPaint(self, event):
+		'''Currently redraws the whole board. This could be optimised later to redraw changed areas only'''
+		debug('Drawing board')
+#		dc = wx.AutoBufferedPaintDC(self) # device context
+		dc = wx.BufferedPaintDC(self) # device context
+		dc.Clear()
+		gc = wx.GraphicsContext.Create(dc) # graphics context
+
+#		region = self.GetUpdateRegion()
+
+
+		# Draw background. TODO handle this seperately in an OnEraseBackgroundHandler
+
+		# This actually draws the line for each connection twice but never mind.
+		# It also doesn't care about whether edge connections should be visible.
+		#for a,bs in self.grid.connections.items():
+		#	for b in bs:
+		#		ax,ay = self.grid_to_view(a)
+		#		bx,by = self.grid_to_view(b)
+		#		pygame.draw.line(self.surface, (0,0,0), (ax,ay), (bx,by),4)
+
+		gc.SetPen(wx.Pen("black", 1))
+		gc.SetBrush(wx.Brush("pink"))
+
+		# Draw points
+		for p in self.grid.points:
+			x,y = self.GridToView(p)
+			debug('drawing at %d,%d' %(x,y))
+			gc.DrawEllipse(x, y, 2, 2)
+		#gc.DrawEllipse(100, 100, 5, 5)
+
+		# Draw stones
+#		for p in self.grid.points:
+#			x,y = p
+#			value = self.grid.get_point(x,y)
+#			x,y = self.grid_to_view(p)
+#
+#			if value is not None and value[0] in self.colors:
+#				pygame.draw.circle(self.surface, self.colors[value[0]], (int(x),int(y)), 15)
+#			else:
+#				pygame.draw.circle(self.surface, (0,0,0), (int(x),int(y)), 5)
+#
+#		if self.highlight_connected and self.highlighted:
+#			debug('Highlighting connections for %s' % str(self.highlighted))
+#			for c in self.grid.connections[self.highlighted]:
+#				x,y = self.grid_to_view(c)
+#				pygame.draw.circle(self.surface, (0,255,0), (int(x),int(y)), 2)
 
 	def GridToView(self,pos):
 		'''Convert grid coordinated to view ones'''
 		x,y = pos
-		ox,oy = self.offset
-		return(x*self.scale+ox, y*self.scale+oy)
+		width,height = self.GetClientSizeTuple()
+		debug('%d,%d' % (width,height))
+		grid_width = self.grid_width + 2*self.borderWidth
+		grid_height = self.grid_height + 2*self.borderWidth
+		scale = min(width/float(grid_width), height/float(grid_height))
+		debug('scale=%f' %scale)
+		return ((x+self.borderWidth)*scale, (y+self.borderWidth)*scale)
 
 	def ViewToGrid(self, pos):
 		'''Convert view coordinates to grid ones'''
 		x,y = pos
-		ox,oy = self.offset
-		x = int(round((x-ox)/self.scale))
-		y = int(round((y-oy)/self.scale))
+		width,height = self.GetClientSizeTuple()
+		grid_width = self.grid_width + 2*self.borderWidth
+		grid_height = self.grid_height + 2*self.borderWidth
+		scale = min(width/float(grid_width), height/float(grid_height))
+		x = int(round(x/scale-self.borderWidth))
+		y = int(round(y/scale-self.borderWidth))
 		return (x,y)
 
 	def OnClick(self, pos):
@@ -200,8 +278,8 @@ class BoardViewWx(wx.Panel):
 
 class PlayableBoardWx(BoardViewWx):
 	'''Playable board using wxPython'''
-	def __init__(self, controller, colors, parent=None, id=wx.ANY_ID):
-		BoardViewWx.__init__(self, colors, parent, id)
+	def __init__(self, controller, colors, parent=None, id=wx.ID_ANY):
+		BoardViewWx.__init__(self, controller.game.board.grid, colors, parent, id)
 		self.controller = controller
 
 	def OnClick(self, pos):
@@ -209,29 +287,30 @@ class PlayableBoardWx(BoardViewWx):
 		# Ignore clicks outside the board
 		# TODO: fix board to include all the top/left of stones properly
 		x,y = pos
+		debug('Clicked %d,%d' %pos)
 
-		if x < 0 \
-		or y < 0 \
-		or x > self.surface.get_width() \
-		or y > self.surface.get_height():
-			return
-
-		pos = self.ViewToGrid(pos)
-
-		if self.controller.accept_local_moves:
-			try:
-				debug('Playing %s,%s...' % pos)
-				self.controller.play_move(pos)
-			except game.NotYourTurnError:
-				debug('Not your turn')
-			except board.BoardError:
-				debug('Cannot place a stone there')
-			except rules.KoError:
-				debug('Invalid move (ko)')
-			except rules.SuicideError:
-				debug('Invalid move (suicide)')
-			except rules.InvalidMove:
-				debug('Invalid move')
+#		if x < 0 \
+#		or y < 0 \
+#		or x > self.surface.get_width() \
+#		or y > self.surface.get_height():
+#			return
+#
+#		pos = self.ViewToGrid(pos)
+#
+#		if self.controller.accept_local_moves:
+#			try:
+#				debug('Playing %s,%s...' % pos)
+#				self.controller.play_move(pos)
+#			except game.NotYourTurnError:
+#				debug('Not your turn')
+#			except board.BoardError:
+#				debug('Cannot place a stone there')
+#			except rules.KoError:
+#				debug('Invalid move (ko)')
+#			except rules.SuicideError:
+#				debug('Invalid move (suicide)')
+#			except rules.InvalidMove:
+#				debug('Invalid move')
 
 
 class GameViewWx(wx.Frame):
@@ -240,17 +319,17 @@ class GameViewWx(wx.Frame):
 		self.panel = wx.Panel(self, wx.ID_ANY)
 		
 		self.game_controller = game_controller
-#		board = BoardImage(game,self.panel,humanPlayers=localPlayers)
+		board = PlayableBoardWx(game_controller,colors,self.panel)
 		
 		mainSizer = wx.BoxSizer(wx.VERTICAL)
-#		mainSizer.Add(board,0,wx.FIXED_MINSIZE)
+		mainSizer.Add(board,1,wx.EXPAND)
 		
 		buttonSizer = wx.BoxSizer(wx.HORIZONTAL)
 		passButton = wx.Button(self.panel, wx.ID_ANY, 'Pass')
 		resignButton = wx.Button(self.panel, wx.ID_ANY, 'Resign')
-		buttonSizer.Add(passButton, 1, wx.ALL|wx.EXPAND)
-		buttonSizer.Add(resignButton, 1, wx.ALL|wx.EXPAND)
-		mainSizer.Add(buttonSizer,1,wx.ALL|wx.EXPAND)
+		buttonSizer.Add(passButton, 1, wx.ALL|wx.FIXED_MINSIZE)
+		buttonSizer.Add(resignButton, 1, wx.ALL|wx.FIXED_MINSIZE)
+		mainSizer.Add(buttonSizer,0)
 
 		self.panel.SetSizer(mainSizer)
 		
