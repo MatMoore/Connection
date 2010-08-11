@@ -201,7 +201,11 @@ class BoardViewWx(wx.Panel):
 
 		self.borderWidth = borderWidth # width of border in grid units
 		self.BoardChanged() # Make sure the board is drawn
-		debug('Created board view')
+
+		if self.IsDoubleBuffered():
+			debug('Board view is using PaintDC')
+		else:
+			debug('Board view is using BufferedPaintDC')
 
 	def BoardChanged(self,*args):
 		self.Refresh() # trigger a paint event
@@ -213,14 +217,12 @@ class BoardViewWx(wx.Panel):
 
 	def OnPaint(self, event):
 		'''Currently redraws the whole board. This could be optimised later to redraw changed areas only'''
-		debug('Drawing board')
-#		dc = wx.AutoBufferedPaintDC(self) # device context
+
 		if self.IsDoubleBuffered():
-			debug('Using PaintDC')
 			dc = wx.PaintDC(self)
 		else:
-			debug('Using BufferedPaintDC')
 			dc = wx.BufferedPaintDC(self) # device context
+
 		dc.Clear()
 		gc = wx.GraphicsContext.Create(dc) # graphics context
 
