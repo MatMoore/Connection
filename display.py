@@ -387,6 +387,18 @@ class GameViewWx(wx.Frame):
 		
 		passButton.Bind(wx.EVT_BUTTON, self.PassButtonClick)
 		resignButton.Bind(wx.EVT_BUTTON, self.ResignButtonClick)
+		self.CreateStatusBar()
+		self.UpdateStatus()
+
+		# Update status whenever the game state changes
+		self.game_controller.game.register_listener(self.UpdateStatus)
+
+	def UpdateStatus(self,move=None,*args):
+		if move is None:
+			moveTxt = ''
+		else:
+			moveTxt = 'Last move: ' + str(move).title() + ' -- '
+		self.SetStatusText(moveTxt+self.game_controller.game.next_player.name + ' to play')
 
 	def PassButtonClick(self,event):
 		self.game_controller.pass_turn()

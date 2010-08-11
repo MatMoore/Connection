@@ -106,13 +106,14 @@ class TwoPlayerGame(Observable):
 		else:
 			self.remaining_handicap -= 1
 
-		self.notify()
+		self.notify(move)
 
 	def pass_turn(self):
 		'''Pass turn. If both players pass the game is over.'''
-		self.moves.append(SpecialMove('pass',self.next_player))
+		move = SpecialMove('pass',self.next_player)
+		self.moves.append(move)
 		self.change_player()
-		self.notify()
+		self.notify(move)
 
 	def resign(self):
 		'''Resign the game.'''
@@ -121,7 +122,9 @@ class TwoPlayerGame(Observable):
 		else:
 			self.winner = self.black
 
-		self.notify()
+		move = SpecialMove('resign',self.next_player)
+		self.moves.append(move)
+		self.notify(move)
 
 	@property
 	def players(self):
