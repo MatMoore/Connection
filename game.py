@@ -1,5 +1,16 @@
 #!/usr/bin/python
-'''The game logic for a two player game of go'''
+'''The game logic for a two player game of go.
+
+General usage is as follows:
+
+1. Play moves using play_move, pass_turn, and resign. (Game state = PLAY_GAME or PLACE_HANDICAP)
+
+2. If the game ends with neither player resigning, the game state will change to MARK_DEAD.
+
+3. Mark any dead stones using the game's board object directly
+
+4. When all dead stones have been marked, call score to end the game (GAME_OVER state) and calculate who won.'''
+
 from observer import Observable
 from copy import copy
 import string
@@ -73,6 +84,7 @@ class TwoPlayerGame(Observable):
 		# Extra points to compensate white for black going first
 		self.komi = komi
 
+		self._game_state = None
 		self._change_game_state()
 
 	def last_move(self):
@@ -148,6 +160,18 @@ class TwoPlayerGame(Observable):
 		self._change_game_state()
 		self.notify(move)
 
+	def score(self):
+		debug('Scoring')
+		self.ruleset.score(self.board, self.black, self.white, self.komi)
+		if self.black.score > self.white.score:
+			self.winner = self.black
+		elif self.black.score < self.white.score:
+			self.winner = self.white
+		else:
+			self.winner = None # Jigo
+		self._game_state = GAME_OVER
+		self.notify(None)
+
 	@property
 	def players(self):
 		return self.black,self.white
@@ -158,12 +182,15 @@ class TwoPlayerGame(Observable):
 
 	def _change_game_state(self):
 		'''Update the game state after each move'''
+		if self._game_state == GAME_OVER:
+			return
+
 		if self.winner:
 			debug('Game over')
 			self._game_state = GAME_OVER
 
 		# Mark dead stones
-		elif self.ruleset.game_over(self.history,self.white,self.black):
+		elif self.ruleset.game_over(self.moves,self.white,self.black):
 			debug('Mark dead stones')
 			self._game_state = MARK_DEAD
 
@@ -183,6 +210,7 @@ class Player:
 		else:
 			self.name = color
 		self.captures = 0
+		self.score = 0
 
 class Move:
 	'''Stores information about a move'''

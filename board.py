@@ -86,6 +86,16 @@ class Board(Observable):
 		if pos in self.territory:
 			return self.territory[pos]
 
+	def count_territory(self):
+		result = {}
+		for pos,player in self.territory.iteritems():
+			if player is not None:
+				if player not in result:
+					result[player] = 1
+				else:
+					result[player] += 1
+		return result
+
 	def set_territory(self, pos, player=None):
 		self.territory[pos] = player
 

@@ -36,10 +36,14 @@ class AGARules:
 
 	def game_over(self,history,white,black):
 		'''game is over when black passes, then white passes'''
-		pass
+		return len(history) >= 2 \
+			and history[-1].type == 'pass' \
+			and history[-1].player == white \
+			and history[-2].type == 'pass' \
+			and history[-2].player == black
 
-	def score(self, board, dead_stone_positions, black, white, komi):
-		return score_japanese(board,dead_stone_positions,black,white,komi)
+	def score(self, board, black, white, komi):
+		return score_japanese(board, black, white, komi)
 
 # TODO: rewrite this to check the board type or something
 # it should only place stones for the standard boards
@@ -59,15 +63,13 @@ class AGARules:
 #
 #				return spaces
 
-# TODO: Rewrite this. Maybe seperate it from the rules
-def score_japanese(board,dead_stone_positions,black,white,komi):
-	for i in dead_stones:
-		group = Group(self,i)
-		if len(group.stones) > 0:
-			if group.owner == black:
-				white.captures += len(group.stones)
-			else:
-				black.captures += len(group.stones)
-			group.kill()
-			score = board.territory()
-			return (score[0]+black.captures,score[1]+white.captures+komi)
+def score_japanese(board, black, white, komi):
+	board.mark_territory()
+	territory = board.count_territory()
+	for player in (black,white):
+		if player not in territory:
+			territory[player] = 0
+
+		player.score = territory[player] + player.captures
+
+	white.score += komi

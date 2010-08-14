@@ -178,15 +178,21 @@ class PlayerPanel(wx.Panel):
 		wx.Panel.__init__(self,parent,id)
 		playerSizer = wx.GridBagSizer(0,5)
 		self.scoreDisplays = {}
+		self.captureDisplays = {}
 		self.timeDisplays = {}
 		row = 0
 		for i in controller.game.players:
 			playerSizer.Add(wx.StaticText(self,wx.ID_ANY, i.name),(row,0),(1,2),flag=wx.ALIGN_CENTER_HORIZONTAL)
 			row += 1
+			capturesLabel = wx.StaticText(self, wx.ID_ANY, 'Captures:')
 			scoreLabel = wx.StaticText(self, wx.ID_ANY, 'Score:')
 			timeLabel = wx.StaticText(self, wx.ID_ANY, 'Time:')
-			self.scoreDisplays[i] = wx.StaticText(self,wx.ID_ANY,str(i.captures))
+			self.captureDisplays[i] = wx.StaticText(self,wx.ID_ANY,str(i.captures))
+			self.scoreDisplays[i] = wx.StaticText(self,wx.ID_ANY,str(i.score))
 			self.timeDisplays[i] = wx.StaticText(self,wx.ID_ANY,'All the time in the world')
+			playerSizer.Add(capturesLabel,(row,0),(1,1),flag=wx.ALIGN_LEFT)
+			playerSizer.Add(self.captureDisplays[i],(row,1),(1,1),flag=wx.ALIGN_LEFT)
+			row += 1
 			playerSizer.Add(scoreLabel,(row,0),(1,1),flag=wx.ALIGN_LEFT)
 			playerSizer.Add(self.scoreDisplays[i],(row,1),(1,1),flag=wx.ALIGN_LEFT)
 			row += 1
@@ -205,7 +211,10 @@ class PlayerPanel(wx.Panel):
 
 	def UpdateScore(self,move=None,*args):
 		if move:
-			self.scoreDisplays[move.player].SetLabel(str(move.player.captures))
+			self.captureDisplays[move.player].SetLabel(str(move.player.captures))
+		else:
+			for player in self.scoreDisplays.keys():
+				self.scoreDisplays[player].SetLabel(str(player.score))
 
 class BoardViewWx(wx.Panel):
 	'''Show the board using wxPython'''
@@ -479,9 +488,12 @@ class GameViewWx(wx.Frame):
 		if self.game_controller.game.state == game.PLAY_GAME:
 			gameTxt = self.game_controller.game.next_player.name + ' to play'
 		elif self.game_controller.game.state == game.GAME_OVER:
-			gameTxt = self.game_controller.game.winner.name + ' wins'
+			if self.game_controller.game.winner is None:
+				gameTxt = 'Game Over: Jigo'
+			else:
+				gameTxt = 'Game Over: '+self.game_controller.game.winner.name + ' wins'
 		elif self.game_controller.game.state == game.MARK_DEAD:
-			gameTxt = 'mark dead stones'
+			gameTxt = 'Mark dead stones'
 		elif self.game_controller.game.state == game.PLACE_HANDICAP:
 			gameTxt = self.game_controller.game.next_player.name + ' to place handicap'
 		else:
