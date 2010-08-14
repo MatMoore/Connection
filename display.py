@@ -172,6 +172,40 @@ class GameGUIPygame():
 		x,y = self.screen_to_view(pos)
 		self.game_view.on_click(pos)
 
+class PlayerPanel(wx.Panel):
+	'''Show details about the players'''
+	def __init__(self,controller,parent=None,id=wx.ID_ANY):
+		wx.Panel.__init__(self,parent,id)
+		playerSizer = wx.GridBagSizer(0,5)
+		self.scoreDisplays = {}
+		self.timeDisplays = {}
+		row = 0
+		for i in controller.game.players:
+			playerSizer.Add(wx.StaticText(self,wx.ID_ANY, i.name),(row,0),(1,2),flag=wx.ALIGN_CENTER_HORIZONTAL)
+			row += 1
+			scoreLabel = wx.StaticText(self, wx.ID_ANY, 'Score:')
+			timeLabel = wx.StaticText(self, wx.ID_ANY, 'Time:')
+			self.scoreDisplays[i] = wx.StaticText(self,wx.ID_ANY,str(i.captures))
+			self.timeDisplays[i] = wx.StaticText(self,wx.ID_ANY,'All the time in the world')
+			playerSizer.Add(scoreLabel,(row,0),(1,1),flag=wx.ALIGN_LEFT)
+			playerSizer.Add(self.scoreDisplays[i],(row,1),(1,1),flag=wx.ALIGN_LEFT)
+			row += 1
+			playerSizer.Add(timeLabel,(row,0),(1,1),flag=wx.ALIGN_LEFT)
+			playerSizer.Add(self.timeDisplays[i],(row,1),(1,1),flag=wx.ALIGN_LEFT)
+			row += 1
+
+			# Some space in between players
+			playerSizer.Add((-1,30), (row,0), (1,2))
+			row += 1
+		self.SetSizer(playerSizer)
+		#self.SetAutoLayout(True) # only needed if we call SetConstraints
+		playerSizer.Fit(self) # Fit this panel to the minimum size of the sizer
+
+		controller.game.register_listener(self.UpdateScore)
+
+	def UpdateScore(self,move=None,*args):
+		if move:
+			self.scoreDisplays[move.player].SetLabel(str(move.player.captures))
 
 class BoardViewWx(wx.Panel):
 	'''Show the board using wxPython'''
@@ -374,9 +408,13 @@ class GameViewWx(wx.Frame):
 		
 		self.game_controller = game_controller
 		board = PlayableBoardWx(game_controller,colors,self.panel)
-		
+		playerView = PlayerPanel(game_controller,self.panel)
+
 		mainSizer = wx.BoxSizer(wx.VERTICAL)
-		mainSizer.Add(board,1,wx.EXPAND)
+		otherMainSizer = wx.BoxSizer(wx.HORIZONTAL)
+		otherMainSizer.Add(board,1,wx.EXPAND)
+		otherMainSizer.Add(playerView,0,wx.EXPAND|wx.ALL,border=10)
+		mainSizer.Add(otherMainSizer,1,wx.EXPAND)
 		
 		buttonSizer = wx.BoxSizer(wx.HORIZONTAL)
 		passButton = wx.Button(self.panel, wx.ID_ANY, 'Pass')

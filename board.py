@@ -117,7 +117,8 @@ class Board(Observable):
 
 	def remove_dead_stones(self,move):
 		'''Remove any stones which are captured by this move'''
-		already_checked = []
+		captures = 0
+		already_checked = set()
 		for position in self.neighbours(move.position):
 			if (position not in already_checked) and not self.is_empty(position) and (self.get_point(position)[0] is not move.player):
 
@@ -125,13 +126,14 @@ class Board(Observable):
 				group = Group(self,position)
 
 				# Save the positions of all the stones in this group to avoid checking the same group multiple times
-				already_checked.extend(group.stones)
+				already_checked |= group.stones
 
-				if group.liberties == 0: # the group is captured!
+				if not group.liberties: # the group is captured!
 
 					# Update the number of captured stones for this player
-					move.player.captures += len(group.stones)
+					captures += len(group.stones)
 					group.kill() # remove the stones from the board
+		return captures
 
 	def size(self):
 		return self.grid.size()
@@ -247,13 +249,13 @@ class Board(Observable):
 class Group:
 	'''A group of stones which are connected'''
 	def __init__(self,board,position):
-		self.stones = [] # list of positions of the stones
-		self.liberties = 0
+		self.stones = set() # list of positions of the stones
+		self.liberties = False
 		self.board = board
 		start_point = board.get_point(position)
 		if start_point is not None:
 			self.owner = start_point[0]
-			self.stones.append(position)
+			self.stones.add(position)
 			self.find_connected_stones(position)
 
 	def __eq__(self,other):
@@ -272,14 +274,15 @@ class Group:
 		for next in neighbours:
 			if next not in self.stones:
 				if self.board.is_empty(next):
-					self.liberties += 1
+					self.liberties = True
 				elif self.board.get_point(next)[0] is self.owner:
-					self.stones.append(next)
+					self.stones.add(next)
 					self.find_connected_stones(next)
 
 	def kill(self):
 		'''Remove the group from the board'''
 		for position in self.stones:
+			debug('removed %s' % str(position))
 			self.board.remove_stone(position)
 
 

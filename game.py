@@ -94,7 +94,7 @@ class TwoPlayerGame(Observable):
 
 		# Play the move
 		self.board.place_stone(move)
-		self.board.remove_dead_stones(move)
+		player.captures += self.board.remove_dead_stones(move)
 
 		# Save the board state and move for later
 		self.moves.append(move)
