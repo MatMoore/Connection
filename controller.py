@@ -43,7 +43,7 @@ class Controller(Observable):
 	def on_move(self, *args):
 		'''Callback function called whenever a move is played'''
 		player = self.game.next_player
-		if player in self.local_players:
+		if player in self.local_players and self.game.state == game.PLAY_GAME:
 			self.accept_local_moves = True
 			debug('accepting local moves')
 		else:

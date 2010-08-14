@@ -342,12 +342,47 @@ class PlayableBoardWx(BoardViewWx):
 		self.Bind(wx.EVT_LEFT_UP, self.MouseUp)
 		self.Bind(wx.EVT_LEFT_DOWN, self.MouseDown)
 		self.Bind(wx.EVT_MOTION, self.MouseMove)
+		self.controller.register_listener(self.GameUpdated)
+
+	def GameUpdated(self, accept_moves, *args):
+		if not accept_moves:
+			self._clicked = None
+			self._hover = None
+			self.Refresh()
 
 	def MouseDown(self, event):
+		'''Checks the game state and forwards the event to the correct event handler'''
+		state = self.controller.game.state
+		f = {
+			game.PLAY_GAME: self.MouseDownGame
+		}
+		if state in f:
+			f[state](event)
+
+	def MouseUp(self, event):
+		'''Checks the game state and forwards the event to the correct event handler'''
+		state = self.controller.game.state
+		f = {
+			game.PLAY_GAME: self.MouseUpGame
+		}
+		if state in f:
+			f[state](event)
+
+	def MouseMove(self, event):
+		'''Checks the game state and forwards the event to the correct event handler'''
+		state = self.controller.game.state
+		f = {
+			game.PLAY_GAME: self.MouseMoveGame
+		}
+		if state in f:
+			f[state](event)
+
+	def MouseDownGame(self, event):
 		event.Skip()
+
 		pos = event.GetPositionTuple()
 		pos = self.ViewToGrid(pos)
-
+	
 		# Ignore clicks in the border area
 		if pos:
 			x,y = pos
@@ -356,7 +391,7 @@ class PlayableBoardWx(BoardViewWx):
 			debug('clicked %d,%d' % pos)
 			self.Refresh()
 
-	def MouseMove(self, event):
+	def MouseMoveGame(self, event):
 		pos = event.GetPositionTuple()
 		pos = self.ViewToGrid(pos)
 
@@ -367,7 +402,7 @@ class PlayableBoardWx(BoardViewWx):
 				self._hover = pos,self.controller.game.next_player
 			self.Refresh()
 
-	def MouseUp(self, event):
+	def MouseUpGame(self, event):
 		'''Callback called when the user clicks in the window'''
 		pos = event.GetPositionTuple()
 		pos = self.ViewToGrid(pos)
@@ -417,28 +452,47 @@ class GameViewWx(wx.Frame):
 		mainSizer.Add(otherMainSizer,1,wx.EXPAND)
 		
 		buttonSizer = wx.BoxSizer(wx.HORIZONTAL)
-		passButton = wx.Button(self.panel, wx.ID_ANY, 'Pass')
-		resignButton = wx.Button(self.panel, wx.ID_ANY, 'Resign')
-		buttonSizer.Add(passButton, 1, wx.ALL|wx.FIXED_MINSIZE)
-		buttonSizer.Add(resignButton, 1, wx.ALL|wx.FIXED_MINSIZE)
+		self.passButton = wx.Button(self.panel, wx.ID_ANY, 'Pass')
+		self.resignButton = wx.Button(self.panel, wx.ID_ANY, 'Resign')
+		buttonSizer.Add(self.passButton, 1, wx.ALL|wx.FIXED_MINSIZE)
+		buttonSizer.Add(self.resignButton, 1, wx.ALL|wx.FIXED_MINSIZE)
 		mainSizer.Add(buttonSizer,0)
 
 		self.panel.SetSizer(mainSizer)
 		
-		passButton.Bind(wx.EVT_BUTTON, self.PassButtonClick)
-		resignButton.Bind(wx.EVT_BUTTON, self.ResignButtonClick)
+		self.passButton.Bind(wx.EVT_BUTTON, self.PassButtonClick)
+		self.resignButton.Bind(wx.EVT_BUTTON, self.ResignButtonClick)
 		self.CreateStatusBar()
 		self.UpdateStatus()
 
 		# Update status whenever the game state changes
 		self.game_controller.game.register_listener(self.UpdateStatus)
 
+		# Grey out pass/resign if it's not the player's go
+		self.game_controller.register_listener(self.GameUpdated)
+
 	def UpdateStatus(self,move=None,*args):
 		if move is None:
 			moveTxt = ''
 		else:
 			moveTxt = 'Last move: ' + str(move).title() + ' -- '
-		self.SetStatusText(moveTxt+self.game_controller.game.next_player.name + ' to play')
+		if self.game_controller.game.state == game.PLAY_GAME:
+			gameTxt = self.game_controller.game.next_player.name + ' to play'
+		elif self.game_controller.game.state == game.GAME_OVER:
+			gameTxt = self.game_controller.game.winner.name + ' wins'
+		elif self.game_controller.game.state == game.MARK_DEAD:
+			gameTxt = 'mark dead stones'
+		elif self.game_controller.game.state == game.PLACE_HANDICAP:
+			gameTxt = self.game_controller.game.next_player.name + ' to place handicap'
+		else:
+			gameTxt = ''
+
+		self.SetStatusText(moveTxt+gameTxt)
+
+	def GameUpdated(self, accept_moves, *args):
+		'''Enable pass/resign only if we accept moves'''
+		self.passButton.Enable(accept_moves)
+		self.resignButton.Enable(accept_moves)
 
 	def PassButtonClick(self,event):
 		self.game_controller.pass_turn()
