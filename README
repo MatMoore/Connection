@@ -22,6 +22,6 @@ THE SOFTWARE.
 To run the game, type:
 python run_gui.py
 
-This requires pygame to be installed (http://www.pygame.org)
+This requires wxPython to be installed (http://www.wxpython.org/)
 
 For information about the rules of go, see Sensei's library (http://senseis.xmp.net)
