@@ -11,6 +11,8 @@ class Controller(Observable):
 		self.remote_players = []
 		self.accept_local_moves = False
 		self.game = None
+		self.confirmed_dead_stones_remote = set()
+		self.confirmed_dead_stones = False
 
 	def add_local_player(self, team, name):
 		'''Add a local player to the game'''
@@ -21,6 +23,24 @@ class Controller(Observable):
 	def add_remote_player(self, team, name):
 		'''Add a remote player to the game'''
 		pass
+
+	def toggle_dead(self, pos):
+		self.confirmed_dead_stones_remote = set()
+		self.confirmed_dead_stones = False
+		self.game.board.toggle_dead(pos)
+
+	def confirm_dead(self, local=True, player=None):
+		if player is not None and not local:
+			debug('Confirmed dead stones for '+player.name)
+			self.confirmed_dead_stones_remote.add(player)
+		elif not local:
+			raise Exception('confirm_dead called without player')
+		else:
+			debug('Confirmed dead stones for local players')
+			self.confirmed_dead_stones = True
+
+		if self.confirmed_dead_stones and self.confirmed_dead_stones_remote == set(self.remote_players):
+			self.game.score()
 
 	# TODO: check we have the correct number of players before starting the game
 	def begin_game(self,board,fixed_handicap=0,komi=0,custom_handicap=0,ruleset=None):

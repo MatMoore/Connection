@@ -123,7 +123,7 @@ class Board(Observable):
 
 	def neighbours(self,pos):
 		'''Returns a list of positions of the neighbouring squares'''
-		return self.grid.neighbours(pos[0], pos[1])
+		return self.grid.neighbours(pos[0], pos[1])[::]
 
 	def remove_dead_stones(self,move):
 		'''Remove any stones which are captured by this move'''

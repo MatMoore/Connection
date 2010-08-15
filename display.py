@@ -294,8 +294,19 @@ class BoardViewWx(wx.Panel):
 			if value is not None and value[0] in self.colors:
 				player, dead = value
 				gc.SetPen(wx.Pen(self.colors[player],0))
-				gc.SetBrush(wx.Brush(self.colors[player]))
-				gc.DrawEllipse(x-stoneSize/2, y-stoneSize/2, stoneSize, stoneSize)
+
+				if dead == board.DEAD_STONE:
+					# Draw dot underneath
+					gc.SetPen(wx.Pen("black", 0))
+					gc.SetBrush(wx.Brush("black"))
+					gc.DrawEllipse(x-pointSize/2, y-pointSize/2, pointSize, pointSize)
+					# Draw transparent dead stone
+					r,g,b = self.colors[player]
+					gc.SetBrush(wx.Brush(wx.Colour(r,g,b,80)))
+					gc.DrawEllipse(x-stoneSize/2, y-stoneSize/2, stoneSize, stoneSize)
+				else:
+					gc.SetBrush(wx.Brush(self.colors[player]))
+					gc.DrawEllipse(x-stoneSize/2, y-stoneSize/2, stoneSize, stoneSize)
 			elif p != hoverPos:
 				gc.SetPen(wx.Pen("black", 0))
 				gc.SetBrush(wx.Brush("black"))
@@ -354,16 +365,16 @@ class PlayableBoardWx(BoardViewWx):
 		self.controller.register_listener(self.GameUpdated)
 
 	def GameUpdated(self, accept_moves, *args):
-		if not accept_moves:
-			self._clicked = None
-			self._hover = None
-			self.Refresh()
+		self._clicked = None
+		self._hover = None
+		self.Refresh()
 
 	def MouseDown(self, event):
 		'''Checks the game state and forwards the event to the correct event handler'''
 		state = self.controller.game.state
 		f = {
-			game.PLAY_GAME: self.MouseDownGame
+			game.PLAY_GAME: self.MouseDownGame,
+			game.MARK_DEAD: self.MouseDownMark
 		}
 		if state in f:
 			f[state](event)
@@ -398,6 +409,19 @@ class PlayableBoardWx(BoardViewWx):
 			self._clicked = pos,self.controller.game.next_player
 			self._hover = None
 			debug('clicked %d,%d' % pos)
+			self.Refresh()
+
+	def MouseDownMark(self, event):
+		event.Skip()
+
+		pos = event.GetPositionTuple()
+		pos = self.ViewToGrid(pos)
+	
+		# Ignore clicks in the border area
+		if pos:
+			x,y = pos
+			self.controller.toggle_dead(pos)
+			debug('Toggled deadness of %d,%d' % pos)
 			self.Refresh()
 
 	def MouseMoveGame(self, event):
@@ -463,14 +487,18 @@ class GameViewWx(wx.Frame):
 		buttonSizer = wx.BoxSizer(wx.HORIZONTAL)
 		self.passButton = wx.Button(self.panel, wx.ID_ANY, 'Pass')
 		self.resignButton = wx.Button(self.panel, wx.ID_ANY, 'Resign')
+		self.confirmButton = wx.Button(self.panel, wx.ID_ANY, 'Confirm')
+		self.confirmButton.Disable()
 		buttonSizer.Add(self.passButton, 1, wx.ALL|wx.FIXED_MINSIZE)
 		buttonSizer.Add(self.resignButton, 1, wx.ALL|wx.FIXED_MINSIZE)
+		buttonSizer.Add(self.confirmButton, 1, wx.ALL|wx.FIXED_MINSIZE)
 		mainSizer.Add(buttonSizer,0)
 
 		self.panel.SetSizer(mainSizer)
 		
 		self.passButton.Bind(wx.EVT_BUTTON, self.PassButtonClick)
 		self.resignButton.Bind(wx.EVT_BUTTON, self.ResignButtonClick)
+		self.confirmButton.Bind(wx.EVT_BUTTON, self.ConfirmButtonClick)
 		self.CreateStatusBar()
 		self.UpdateStatus()
 
@@ -478,7 +506,9 @@ class GameViewWx(wx.Frame):
 		self.game_controller.game.register_listener(self.UpdateStatus)
 
 		# Grey out pass/resign if it's not the player's go
-		self.game_controller.register_listener(self.GameUpdated)
+		self.game_controller.register_listener(self.OnChangePlayer)
+
+		self.game_controller.game.register_listener(self.OnChangeState)
 
 	def UpdateStatus(self,move=None,*args):
 		if move is None:
@@ -501,10 +531,17 @@ class GameViewWx(wx.Frame):
 
 		self.SetStatusText(moveTxt+gameTxt)
 
-	def GameUpdated(self, accept_moves, *args):
+	def OnChangePlayer(self, accept_moves, *args):
 		'''Enable pass/resign only if we accept moves'''
 		self.passButton.Enable(accept_moves)
 		self.resignButton.Enable(accept_moves)
+
+	def OnChangeState(self, move, *args):
+		'''Show confirm button if we are marking dead stones'''
+		self.confirmButton.Enable(self.game_controller.game.state == game.MARK_DEAD)
+
+	def ConfirmButtonClick(self,event):
+		self.game_controller.confirm_dead()
 
 	def PassButtonClick(self,event):
 		self.game_controller.pass_turn()
