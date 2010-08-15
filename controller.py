@@ -1,4 +1,17 @@
-'''Objects which control making moves in a ggame'''
+'''Object which manages the different players in the game and keeps track of when we should accept moves from the local client.
+
+General usage:
+
+1. Add players with add_local_player and add_remote_player, then call begin_game.
+
+2. Local players play moves using play_move, pass_turn and resign. This will make the move for the appropriate player. The object will notify when it is one of the local players' turns.
+
+3. Remote players play moves through the game object directly. The remote player object should also listen for and relay the local moves.
+
+4. After each move the game object should notify it's listeners, at which point they can check whether the game state has changed.
+
+5. When the game state is MARK_DEAD, stones can be marked dead using toggle_dead, and confirmed using confirm_dead, for both local and remote players. Once all players have confirmed, the game will end.
+'''
 from observer import Observable
 import game
 import multilogger
