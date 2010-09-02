@@ -340,6 +340,7 @@ class GameViewWx(wx.Frame):
 		self.game_controller.game.register_listener(self.OnChangeState)
 
 	def UpdateStatus(self,move=None,*args):
+		dialog = None
 		if move is None:
 			moveTxt = ''
 		else:
@@ -349,16 +350,22 @@ class GameViewWx(wx.Frame):
 		elif self.game_controller.game.state == game.GAME_OVER:
 			if self.game_controller.game.winner is None:
 				gameTxt = 'Game Over: Jigo'
+				dialog = wx.MessageDialog(self,'Jigo', caption='Game Over', style=wx.OK|wx.ICON_INFORMATION)
 			else:
 				gameTxt = 'Game Over: '+self.game_controller.game.winner.name + ' wins'
+				dialog = wx.MessageDialog(self,self.game_controller.game.winner.name + ' wins', caption='Game Over', style=wx.OK|wx.ICON_INFORMATION)
 		elif self.game_controller.game.state == game.MARK_DEAD:
 			gameTxt = 'Mark dead stones'
+			dialog = wx.MessageDialog(self,'Please mark dead stones', caption='Mark dead stones', style=wx.OK|wx.ICON_INFORMATION)
 		elif self.game_controller.game.state == game.PLACE_HANDICAP:
 			gameTxt = self.game_controller.game.next_player.name + ' to place handicap'
+			dialog = wx.MessageDialog(self,'Please place your handicap stones', caption='Handicap stones', style=wx.OK|wx.ICON_INFORMATION)
 		else:
 			gameTxt = ''
 
 		self.SetStatusText(moveTxt+gameTxt)
+		if dialog:
+			dialog.ShowModal()
 
 	def OnChangePlayer(self, accept_moves, *args):
 		'''Enable pass/resign only if we accept moves'''
