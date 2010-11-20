@@ -7,6 +7,7 @@ import wx
 import wx.wizard
 import GamePanel
 import controller
+import multilogger
 
 class NewGameWizard(wx.wizard.Wizard):
 	def __init__(self):
@@ -16,6 +17,7 @@ class NewGameWizard(wx.wizard.Wizard):
 		self.players = PlayerPage(self)
 		self.board = BoardPage(self)
 		self.rules = RulesPage(self)
+		self.Bind(wx.wizard.EVT_WIZARD_FINISHED, self.Finish)
 
 	def Run(self):
 		'''Show each options screen sequentially, starting with players'''
@@ -42,6 +44,10 @@ class NewGameWizard(wx.wizard.Wizard):
 		if page.prev:
 			page.prev.next = None
 			page.prev = None
+
+	def Finish(self,event):
+		size = self.board.Size()
+		info('Size is '+str(size))
 
 
 class GenericPage(wx.wizard.PyWizardPage):
@@ -77,11 +83,39 @@ class BoardPage(GenericPage):
 	'''Choose the board'''
 	def __init__(self, parent):
 		GenericPage.__init__(self,parent,'Choose a board')
+		self.sc = SizeChooser(self)
+		self.sizer.Add(self.sc)
+
+	def Size(self):
+		return self.sc.Size()
 
 class RulesPage(GenericPage):
 	'''Choose the ruleset, komi, handicap etc'''
 	def __init__(self, parent):
 		GenericPage.__init__(self,parent,'Game rules')
+
+class SizeChooser(wx.RadioBox):
+	'''Pick the board size from a list'''
+	def __init__(self, parent):
+		self.sizes = [(9,9), (13,13), (19,19)]
+		wx.RadioBox.__init__(
+			self,
+			parent,
+			label='Board Size',
+			choices=['x'.join(map(str,i)) for i in self.sizes]
+		)
+
+		self.choice = 0
+		self.Bind(wx.EVT_RADIOBOX, self.EvtRadioBox, self)
+
+	def EvtRadioBox(self, event):
+		self.choice = event.GetInt()
+
+	def Size(self):
+		return self.sizes[self.choice]
+
+# Get a logger for this module
+debug,info,warning,error = multilogger.logFunctions(__name__)
 
 if __name__ == '__main__':
 	app = wx.App()
