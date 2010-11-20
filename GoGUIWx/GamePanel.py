@@ -39,7 +39,6 @@ class PlayerPanel(wx.Panel):
 			playerSizer.Add((-1,30), (row,0), (1,2))
 			row += 1
 		self.SetSizer(playerSizer)
-		#self.SetAutoLayout(True) # only needed if we call SetConstraints
 		playerSizer.Fit(self) # Fit this panel to the minimum size of the sizer
 
 		controller.game.register_listener(self.UpdateScore)
@@ -54,15 +53,22 @@ class PlayerPanel(wx.Panel):
 class BoardView(wx.Panel):
 	'''Show the board using wxPython'''
 
-	def __init__(self, grid, colors, parent=None, id=wx.ID_ANY, bgColour=(255,255,255), borderWidth=0.75, stoneSpacing = 0.1, pointSize = 0.2, highlightColor = (255,255,0)):
+	def __init__(self, grid, game, colors, parent=None, id=wx.ID_ANY, bgColour=(255,255,255), borderWidth=0.75, stoneSpacing = 0.1, pointSize = 0.2, highlightColor = (255,255,0)):
 		'''The border width defines an empty space bordering the outer edges, given in grid points. Stone spacing is the width in grid points of the space between neighbouring stones. Point size is given as a fraction of stone size.'''
 		wx.Panel.__init__(self, parent, id, style=wx.FULL_REPAINT_ON_RESIZE)
 		self.SetBackgroundColour(bgColour)
 		self.colors = colors
 		self.grid = grid
-		self.grid.register_listener(self.BoardChanged)
+
+		# Assume that whenever a move is made, the board will change.
+		# This will trigger a full repaint.
+		# It would be quicker to listen for individual grid changes, and then do
+		# a partial repaint for each one, but this way is simpler :)
+		game.register_listener(self.BoardChanged)
 		self.Bind(wx.EVT_PAINT, self.OnPaint)
 		self.Bind(wx.EVT_ERASE_BACKGROUND, self.OnPaintBg)
+
+		# Set a minimum size for the board, so the stones don't overlap
 		self.SetMinSize((100,100))
 
 		# Tuples of pos, player indicating what the player is hovering over
@@ -186,7 +192,7 @@ class BoardView(wx.Panel):
 class PlayableBoard(BoardView):
 	'''Playable board using wxPython'''
 	def __init__(self, controller, colors, parent=None, id=wx.ID_ANY):
-		BoardView.__init__(self, controller.game.board.grid, colors, parent, id)
+		BoardView.__init__(self, controller.game.board.grid, controller.game, colors, parent, id)
 		self.controller = controller
 		self.Bind(wx.EVT_LEFT_UP, self.MouseUp)
 		self.Bind(wx.EVT_LEFT_DOWN, self.MouseDown)
