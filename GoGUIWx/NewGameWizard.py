@@ -8,11 +8,12 @@ import wx.wizard
 import GamePanel
 import controller
 import multilogger
+import geometry
+import board
 
 class NewGameWizard(wx.wizard.Wizard):
 	def __init__(self):
 		wx.wizard.Wizard.__init__(self, None, -1)
-		self.controller = None
 		self.gameType = GameTypePage(self)
 		self.players = PlayerPage(self)
 		self.board = BoardPage(self)
@@ -46,8 +47,22 @@ class NewGameWizard(wx.wizard.Wizard):
 			page.prev = None
 
 	def Finish(self,event):
+		# Read game setup from the wizard pages
 		size = self.board.Size()
 		info('Size is '+str(size))
+
+		grid = geometry.FoldedGrid(size[0],size[0],1,[('N','S'),('E','W')])
+
+		#Create game controller
+		game_controller = controller.Controller()
+		black = game_controller.add_local_player('black','Black player')
+		white = game_controller.add_local_player('white','White player')
+		game_controller.begin_game(board.Board(grid))
+
+		# Show the game in a new window
+		colors = {black:(0,0,0), white:(200,200,200)}
+		frame = GamePanel.GamePanel(game_controller, colors)
+		frame.Show()
 
 
 class GenericPage(wx.wizard.PyWizardPage):
