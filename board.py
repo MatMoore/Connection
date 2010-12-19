@@ -1,5 +1,13 @@
 #!/usr/bin/python
-'''The classes in this module implement a Go board. Given a grid, the board lets you add and remove stones and group connected stones. There is no rule checking done by the board itself - this is taken care of in the rules module.'''
+'''The classes in this module implement a Go board. Given a grid, the board lets you add and remove stones and group connected stones. There is no rule checking done by the board itself - this is taken care of in the rules module.
+
+This module defines some constants which are used to distinguish the nature of the stones on the board:
+
+	`board.STONE`
+		Represents a live stone
+	`board.DEAD_STONE`
+		Represents a dead stone
+'''
 from copy import copy,deepcopy
 from observer import Observable
 from geometry import RectangularGrid
@@ -12,23 +20,23 @@ DEAD_STONE = 1
 
 # Define some exceptions
 class BoardError(Exception):
-	'''Exceptions thrown on invalid board operations'''
+	'''Exceptions thrown on invalid board operations.'''
 
 class NonExistantPointError(BoardError):
-	'''Exception thrown when trying to place a stone on a non existant point'''
+	'''Exception thrown when trying to place a stone on a non existant point.'''
 	pass
 
 class OccupiedError(BoardError):
-	'''Exception thrown when trying to place a stone on an occupied point'''
+	'''Exception thrown when trying to place a stone on an occupied point.'''
 	pass
 
 class SizeError(BoardError):
-	'''The size of the board is too big or small'''
+	'''The size of the board is too big or small.'''
 	pass
 
 
 class Board(Observable):
-	'''A rectangular board. Stones can be added to any square which isnt occupied.'''
+	'''A rectangular board. Stones can be added to any square which isnt occupied. Each board object contains a grid of points, which are set to `None` if empty, otherwise contain a tuple of `(player,type)`, where type is either `board.STONE` or `board.DEAD_STONE`.'''
 
 	def __init__(self,grid):
 		Observable.__init__(self)
@@ -36,7 +44,7 @@ class Board(Observable):
 		self.territory = {}
 
 	def __eq__(self, other):
-		'''Two boards are the same if all squares have the same state'''
+		'''Two boards are the same if all squares have the same state.'''
 		return self.grid == other.grid
 
 	def __copy__(self):
@@ -52,19 +60,19 @@ class Board(Observable):
 		return Board(newgrid)
 
 	def positions(self):
-		'''Iterate over valid board coordinates'''
+		'''Iterate over valid board coordinates.'''
 		return self.grid.get_positions()
 
 	def points(self):
-		'''Iterator yielding tuples representing the coordinates of the points and their values'''
+		'''Iterator yielding tuples representing the coordinates of the points and their values.'''
 		return self.grid.get_points()
 
 	def connections(self):
-		'''Iterate over the connections of the grid'''
+		'''An iteratator over the connections of the grid, yielding tuples of two board points.'''
 		return self.grid.get_connections()
 
 	def place_stone(self, move):
-		'''Attempt to place a stone at the given position. Throws an exception if there is not an empty space at that position'''
+		'''Attempt to place a stone at the given position. Throws an exception if there is not an empty space at that position.'''
 		# Check that there is a free space at that position
 		self.check_free_space(move)
 
@@ -72,21 +80,24 @@ class Board(Observable):
 		self.set_point(move.position, (move.player, STONE))
 
 	def check_free_space(self,move):
-		'''Check to see if the space exists and is empty'''
+		'''Check to see if the space exists and is empty.'''
 		if not self.is_empty(move.position):
 			raise OccupiedError
 
 	def remove_stone(self, pos):
+		'''Remove a stone from the board.'''
 		if self.is_empty(pos):
 				raise BoardError('Tried to remove a stone that doesn\'t exist')
 
 		self.set_point(pos, None)
 
 	def get_territory(self, pos):
+		'''Return the owner of the territory at position `pos`, or `None` if it is neutral.'''
 		if pos in self.territory:
 			return self.territory[pos]
 
 	def count_territory(self):
+		'''Return a dictionary containing the points of territory for each player. Assumes the territory has been calculated already.'''
 		result = {}
 		for pos,player in self.territory.iteritems():
 			if player is not None:
@@ -97,12 +108,15 @@ class Board(Observable):
 		return result
 
 	def set_territory(self, pos, player=None):
+		'''Mark a particular point as belong to a player.'''
 		self.territory[pos] = player
 
 	def reset_territory(self):
+		'''Reset previously calculated territories.'''
 		self.territory = {}
 
 	def get_point(self, pos):
+		'''Get the value of a board point.'''
 		try:
 			point = self.grid.get_point(pos[0], pos[1])
 		except:
@@ -110,23 +124,25 @@ class Board(Observable):
 		return point
 
 	def set_point(self, pos, value):
+		'''Set the value of a board point.'''
 		try:
 			self.grid.set_point(pos[0],pos[1],value)
 		except:
 			raise NonExistantPointError
 
 	def is_empty(self, pos):
+		'''Check if a point is empty.'''
 		point = self.get_point(pos)
 		if point is None:
 			return True
 		return (point[1] != STONE)
 
 	def neighbours(self,pos):
-		'''Returns a list of positions of the neighbouring squares'''
+		'''Returns a list of positions of the neighbouring points.'''
 		return self.grid.neighbours(pos[0], pos[1])[::]
 
 	def remove_dead_stones(self,move):
-		'''Remove any stones which are captured by this move'''
+		'''Remove any stones which are captured by this move.'''
 		captures = 0
 		already_checked = set()
 		for position in self.neighbours(move.position):
@@ -146,14 +162,15 @@ class Board(Observable):
 		return captures
 
 	def size(self):
+		'''Return the size of the board.'''
 		return self.grid.size()
 
 	def group(self,position):
-		'''Return the group of stones at a given position'''
+		'''Return the group of stones at a given position.'''
 		return Group(self,position)
 
 	def mark_territory(self):
-		'''Find empty space surrounded by a single player, and mark it as that player's territory. Assumes all stones are live unless marked otherwise'''
+		'''Find empty space surrounded by a single player, and mark it as that player's territory. Assumes all stones are live unless marked otherwise.'''
 		self.reset_territory()
 		done = [] # points which have been checked already
 
@@ -252,12 +269,9 @@ class Board(Observable):
 				if state in (STONE, DEAD_STONE):
 					self.set_point(next,(player, new_state))
 
-	def guessDeadGroups(self):
-		pass
-
 
 class Group:
-	'''A group of stones which are connected'''
+	'''A group of stones which are connected.'''
 	def __init__(self,board,position):
 		self.stones = set() # list of positions of the stones
 		self.liberties = False
@@ -290,14 +304,14 @@ class Group:
 					self.find_connected_stones(next)
 
 	def kill(self):
-		'''Remove the group from the board'''
+		'''Remove the group from the board.'''
 		for position in self.stones:
 			debug('removed %s' % str(position))
 			self.board.remove_stone(position)
 
 
 class RectangularBoard(Board):
-	'''Class for creating regular rectangular boards'''
+	'''Convenience class for creating regular rectangular boards.'''
 
 	def __init__(self, size):
 		try:
@@ -313,7 +327,7 @@ class RectangularBoard(Board):
 		Board.__init__(self,grid)
 
 	def get_size(self):
-		'''Number of points wide/tall the board is. This doesn't really have any use and is just intended for testing'''
+		'''Number of points wide/tall the board is. This doesn't really have any use and is just intended for testing.'''
 		x1,y1,x2,y2 = self.grid.size()
 		return (x2-x1+1,y2-y1+1)
 

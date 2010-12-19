@@ -1,15 +1,17 @@
 #!/usr/bin/python
-'''The game logic for a two player game of go.
+'''This module contains the underlying model of the game itself. It depends heavily on the board and rules modules. Games are currently limited to two players only.
 
-General usage is as follows:
+There are four major stages to the game, represented by module level constants:
 
-1. Play moves using play_move, pass_turn, and resign. (Game state = PLAY_GAME or PLACE_HANDICAP)
-
-2. If the game ends with neither player resigning, the game state will change to MARK_DEAD.
-
-3. Mark any dead stones using the game's board object directly
-
-4. When all dead stones have been marked, call score to end the game (GAME_OVER state) and calculate who won.'''
+	`game.GAME_HANDICAP`
+		The current player must place handicap stones before the game can begin.
+	`game.PLAY_GAME`
+		The game is in progress.
+	`game.MARK_DEAD`
+		The game is over, and players must mark the "dead" stones.
+	`game.GAME_OVER`
+		The game is over.
+'''
 
 from observer import Observable
 from copy import copy
@@ -25,17 +27,31 @@ MARK_DEAD = 2
 GAME_OVER = 3
 
 # Define some exceptions
-class GameError(Exception): pass
+class GameError(Exception):
+	'''Base class for all Game exceptions.'''
+	pass
 
 class NotYourTurnError(GameError):
-	'''Thrown when a player makes a move when it's not their turn'''
+	'''Thrown when a player makes a move when it's not their turn.'''
 	pass
 
 class GameOverError(GameError):
+	'''Thrown if the operation is invalid because the game is over.'''
 	pass
 
 class TwoPlayerGame(Observable):
-	'''Handles all the game logic for a 2 player game of go.'''
+	'''This class creates the core object representing the state of the game. The current state of the game is given by the value of the `state` attribute.
+
+	The typical lifecycle of this object is as follows:
+
+1. Play moves using play_move, pass_turn, and resign. (state = `PLAY_GAME` or `PLACE_HANDICAP`).
+
+2. If the game ends with neither player resigning, the game state will change to `MARK_DEAD`.
+
+3. Mark any dead stones using the game's board object directly
+
+4. When all dead stones have been marked, call score to end the game (`GAME_OVER` state) and calculate who won.
+	'''
 
 	def __init__(self,board,black_player=None,white_player=None,fixed_handicap=0,komi=0,custom_handicap=0,ruleset=None):
 		info('Starting game')
@@ -88,23 +104,23 @@ class TwoPlayerGame(Observable):
 		self._change_game_state()
 
 	def last_move(self):
-		'''Return the last move played'''
+		'''Return the last move played.'''
 		if self.moves:
 			return self.moves[-1]
 
 	def change_player(self):
-		'''Toggle the next player'''
+		'''Toggle the next player.'''
 		if self.next_player == self.black:
 			self.next_player = self.white
 		else:
 			self.next_player = self.black
 
 	def current_player(self):
-		'''Return the id of the current player'''
+		'''Return the id of the current player.'''
 		return self.next_player.color
 
 	def play_move(self,position,player):
-		'''Attempt to play the next move'''
+		'''Attempt to play the next move.'''
 
 		if self.state in (GAME_OVER, MARK_DEAD):
 			raise GameOverError
@@ -161,6 +177,7 @@ class TwoPlayerGame(Observable):
 		self.notify(move)
 
 	def score(self):
+		'''Score the game.'''
 		debug('Scoring')
 		self.ruleset.score(self.board, self.black, self.white, self.komi)
 		if self.black.score > self.white.score:
@@ -174,14 +191,16 @@ class TwoPlayerGame(Observable):
 
 	@property
 	def players(self):
+		'''A tuple of the black and white player objects.'''
 		return self.black,self.white
 
 	@property
 	def state(self):
+		'''Integer representing the current game stage.'''
 		return self._game_state
 
 	def _change_game_state(self):
-		'''Update the game state after each move'''
+		'''Update the game state after each move.'''
 		if self._game_state == GAME_OVER:
 			return
 
@@ -202,7 +221,7 @@ class TwoPlayerGame(Observable):
 			self._game_state = PLAY_GAME
 
 class Player:
-	'''Stores information about a player'''
+	'''Stores information about a player.'''
 	def __init__(self,color,name=None):
 		self.color = color
 		if name:
@@ -213,7 +232,7 @@ class Player:
 		self.score = 0
 
 class Move:
-	'''Stores information about a move'''
+	'''Stores information about a move.'''
 	def __init__(self,position,player):
 		self.type = 'move'
 		self.position = position
@@ -231,7 +250,7 @@ class Move:
 		return '%s %s%d'%(self.player.color,x,y)
 
 class SpecialMove:
-	'''Represents a pass/resign move'''
+	'''Represents a pass/resign move.'''
 	def __init__(self,type,player):
 		self.type = type
 		self.player = player
