@@ -115,10 +115,6 @@ class TwoPlayerGame(Observable):
 		else:
 			self.next_player = self.black
 
-	def current_player(self):
-		'''Return the id of the current player.'''
-		return self.next_player.color
-
 	def play_move(self,position,player):
 		'''Attempt to play the next move.'''
 
