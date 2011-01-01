@@ -5,7 +5,7 @@ if __name__=='__main__':
 
 import wx
 import wx.wizard
-import GamePanel
+import gamePanel
 import controller
 import multilogger
 import geometry
@@ -61,7 +61,7 @@ class NewGameWizard(wx.wizard.Wizard):
 
 		# Show the game in a new window
 		colors = {black:(0,0,0), white:(200,200,200)}
-		frame = GamePanel.GamePanel(game_controller, colors)
+		frame = gamePanel.GamePanel(game_controller, colors)
 		frame.Show()
 
 
