@@ -19,6 +19,7 @@ import string
 import rules
 import geometry
 import multilogger
+import gameErrors
 
 # Game states
 PLACE_HANDICAP = 0
@@ -57,6 +58,7 @@ class TwoPlayerGame(Observable):
 		info('Starting game')
 
 		Observable.__init__(self)
+		self.errors = gameErrors.ErrorList()
 		self.board = board
 
 		if ruleset:
@@ -117,6 +119,8 @@ class TwoPlayerGame(Observable):
 
 	def play_move(self,position,player):
 		'''Attempt to play the next move.'''
+
+		self.errors.clear()
 
 		if self.state in (GAME_OVER, MARK_DEAD):
 			raise GameOverError
@@ -184,6 +188,11 @@ class TwoPlayerGame(Observable):
 			self.winner = None # Jigo
 		self._game_state = GAME_OVER
 		self.notify(None)
+
+	def fail(self,reason='',detail=''):
+		self.errors.fail(reason,detail)
+		# Currently multiple errors aren't handled by the GUI which relies on exceptions to handle invalid moves etc. This is a temporary hack until I rewrite that.
+		self.errors.check() # raises an exception
 
 	@property
 	def players(self):

@@ -4,7 +4,7 @@ class SuicideError(InvalidMove): pass
 class KoError(InvalidMove): pass
 class NonExistantSquareError(InvalidMove): pass
 
-class ErrorList(Object):
+class ErrorList(object):
 	'''Container for error information. If `ErrorList.errors` is not empty, then there are errors that need handling.'''
 	def __init__(self):
 		self.errors = []
