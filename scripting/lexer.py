@@ -17,7 +17,7 @@ tokens = (
 )
 
 def t_FLOAT(t):
-	'''-?\d+.\d*'''
+	'''-?\d+\.\d*'''
 	t.value = float(t.value)
 	return t
 

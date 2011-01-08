@@ -77,7 +77,7 @@ def p_expression(p):
 	p[0] = p[1]
 
 def p_variable(p):
-	''' expression : VARIABLE'''
+	'''expression : VARIABLE'''
 	p[0] = Node('variable',[],p[1])
 
 def p_literal(p):
@@ -122,6 +122,10 @@ def p_subexpression(p):
 	else:
 		#p[0] = Node('expression',[p[2]])
 		p[0] = p[2]
+
+def p_subexpression_variable(p):
+	'''subexpression : VARIABLE'''
+	p[0] = Node('variable',[],p[1])
 
 def p_block(p):
 	'''block : LBRACE statement-list RBRACE'''
