@@ -22,7 +22,7 @@ DEAD_STONE = 1
 class BoardError(Exception):
 	'''Exceptions thrown on invalid board operations.'''
 
-class NonExistantPointError(BoardError):
+class NonExistentPointError(BoardError):
 	'''Exception thrown when trying to place a stone on a non existant point.'''
 	pass
 
@@ -120,7 +120,7 @@ class Board(Observable):
 		try:
 			point = self.grid.get_point(pos[0], pos[1])
 		except:
-			raise NonExistantPointError
+			raise NonExistentPointError
 		return point
 
 	def set_point(self, pos, value):
@@ -128,7 +128,7 @@ class Board(Observable):
 		try:
 			self.grid.set_point(pos[0],pos[1],value)
 		except:
-			raise NonExistantPointError
+			raise NonExistentPointError
 
 	def is_empty(self, pos):
 		'''Check if a point is empty.'''
@@ -167,6 +167,7 @@ class Board(Observable):
 
 	def group(self,position):
 		'''Return the group of stones at a given position.'''
+		debug(position)
 		return Group(self,position)
 
 	def mark_territory(self):
@@ -276,6 +277,7 @@ class Group:
 		self.stones = set() # list of positions of the stones
 		self.liberties = False
 		self.board = board
+		debug('using point '+str(position))
 		start_point = board.get_point(position)
 		if start_point is not None:
 			self.owner = start_point[0]
