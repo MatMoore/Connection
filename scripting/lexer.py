@@ -2,7 +2,7 @@ import ply.lex as lex
 
 tokens = (
 	'NAME', # function names
-	'STRING', # single quoted strings
+	'STRING', # quoted strings
 	'VARIABLE',
 	'IS_A', # used to declare types (for validating input only)
 	'LPAREN',
@@ -27,7 +27,7 @@ def t_INTEGER(t):
 	return t
 
 def t_STRING(t):
-	'''\'[^\']*\''''
+	'''(\'[^\']*\')|(\"[^\"]*\")'''
 	t.value = t.value[1:-1]
 	return t
 
