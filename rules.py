@@ -1,75 +1,212 @@
 #!/usr/bin/python
 '''This module implements various rulesets which can be used to validate moves and score the game.'''
 from copy import copy
-from board import Group
+import re
+import gameErrors
+import game
+import board
+import multilogger
+from abc import ABCMeta,abstractmethod
 
-# Invalid move exceptions
-class InvalidMove(Exception): pass
-class SuicideError(InvalidMove): pass
-class KoError(InvalidMove): pass
-class NonExistantSquareError(InvalidMove): pass
-
+# TODO: make these a property of the board, and rewrite fixed handicap handling
 nine_star_points = ((3,7),(7,3),(3,3),(7,7),(5,5))
 thirteen_star_points = ((4,4), (9,9), (4,9), (9,4), (7,7),(4,7),(9,7),(7,4),(7,9))
 nineteen_star_points = ((4,4),(16,16),(4,16),(16,5),(10,10),(4,10),(16,10),(10,4),(16,4))
 
-class AGARules:
-	'''American go association rules'''
-	#check if a move on the board
-	def check_suicide(self,move,board):
+def score_japanese(player, territory):
+	player.score = territory + player.captures + player.komi
+
+class GoRules(object):
+	'''Abstract base class for objects which handle game rules'''
+	__metaclass__ = ABCMeta
+
+	def __init__(self):
+		object.__init__(self)
+		self.testboard = None
+		self._parameters = {}
+		self.game = None
+		self.errors = gameErrors.ErrorList() # List of rule violations encountered during a move
+
+	@property
+	def parameters(self):
+		'''Game parameters which must be set to start the game. This does not include komi or handicap as these are properties of the team.'''
+		return self._parameters.values()
+
+	def parameter(self, name):
+		'''Retrieve a game parameter by name'''
+		return self._parameters[name]
+
+	def fail(self):
+		# Currently multiple errors aren't handled by the GUI which relies on exceptions to handle invalid moves etc. This is a temporary hack until I rewrite that.
+		self.errors.check()
+
+	@abstractmethod
+	def setup(self,game):
+		'''Must be called at the beginning of the game. Game state is GAME_HANDICAP.
+		If the game remains in this state then further moves played will be considered handicap stones and will not count as part of the game history.'''
+		self.game = game
+
+	@abstractmethod
+	def place_handicap(self, move):
+		'''Handle manual placement of handicap stones'''
+		pass
+
+	@abstractmethod
+	def gameover(self):
+		'''Return true if the game is over. If a winner is not set, the game will go into the MARK_DEAD state, and then the game will be scored.'''
+		pass
+
+	@abstractmethod
+	def more_handicap(self, player):
+		'''Called after accepting a new handicap stone. Returns true if the player has more handicap stones to place.'''
+
+		pass
+
+	@abstractmethod
+	def play_move(self, move):
+		'''Handle a normal game move'''
+		pass
+
+	@abstractmethod
+	def change_active_player(self):
+		'''Change the active player on the current team after a move is played'''
+		pass
+
+	@abstractmethod
+	def change_team(self):
+		'''Change the team after a move is played'''
+		pass
+
+	@abstractmethod
+	def score_player(self, player):
+		'''Calculate the score of a player at the end of the game'''
+		pass
+
+	def check_suicide(self,position,board):
 		'''check to see if the stone has any liberties'''
-		group = board.group(move.position)
+		group = board.group(position)
 		if group.liberties == 0:
-			raise SuicideError
+			self.errors.fail('SuicideError')
 
 	def check_ko(self,move,board,history):
 		'''Check to see if the move resets the board to any of its previous states'''
 		if board in history:
-			raise KoError
+			self.errors.fail('KoError')
 
-	def check_rules(self,move,board,history):
-		testboard = copy(board)
-		testboard.place_stone(move) #try the move
-		testboard.remove_dead_stones(move) #remove stones it captures
-		self.check_suicide(move,testboard) #check the stone is alive
-		self.check_ko(move,testboard,history) #check it doesnt repeat a previous board position
+	def begin(self):
+		'''Start a transactional operation on the board'''
+		self.testboard = copy(self.game.board)
+	
+	def rollback(self):
+		'''Revert a transactional operation on the board'''
+		self.testboard = None
 
-	def game_over(self,history,white,black):
-		'''game is over when black passes, then white passes'''
+	def commit(self):
+		'''Commit a transactional operation on the board'''
+		self.game.board = self.testboard
+		self.testboard = None
+
+	@property
+	def board(self):
+		if self.testboard is None:
+			return self.game.board
+		else:
+			return self.testboard
+
+
+class ScriptedRules(object):
+	'''TODO: rules object which follows scripted rules'''
+
+	def __init__(self, game, script_handler):
+		self.game = game
+		self.handler = script_handler
+
+
+class AGARules(GoRules):
+	'''American go association rules'''
+
+	def setup(self, game):
+		'''Start game. Black goes first, unless there was a handicap'''
+		self.game = game
+
+		# TODO: loop through teams handling fixed handicap, go to next player if so
+		game.start() # skip handicap placement
+
+	def place_handicap(self, move):
+		'''Handle manual placement of handicap stones in the same way as regular moves'''
+		self.play_move(move)
+
+	def more_handicap(self, player):
+		'''Called after accepting a new handicap stone. Returns true if the player has more handicap stones to place.'''
+		return 0
+
+	def gameover(self):
+		'''Returns true if the game is over, i.e. white then black passes consecutively. If a winner is not set, the game will go into the MARK_DEAD state, and then the game will be scored.'''
+		history = self.game.moves
 		return len(history) >= 2 \
 			and history[-1].type == 'pass' \
-			and history[-1].player == white \
+			and history[-1].player == self.game.white \
 			and history[-2].type == 'pass' \
-			and history[-2].player == black
+			and history[-2].player == self.game.black
 
-	def score(self, board, black, white, komi):
-		return score_japanese(board, black, white, komi)
+	def play_move(self, move):
+		'''Handle a normal game move by the current player.'''
+		self.errors.clear()
+		self.begin()
 
-# TODO: rewrite this to check the board type or something
-# it should only place stones for the standard boards
-#		def place_handicap(self,number,board,black):
-#				if boardsize == (9,9):
-#						stars = AGARuleset.nine_star_points
-#				elif boardsize == (13,13):
-#						stars = AGARuleset.thirteen_star_points
-#				elif boardsize == (19,19):
-#						stars = AGARuleset.nineteen_star_points
+		# Place the stone
+		try:
+			self.board.place_stone(move)
+		except board.BoardError as error:
+			self.errors.fail(error.__class__.__name__)
+			self.rollback()
+			return
 
-#				spaces = len(stars)
-#				if fixed_handicap > spaces:
-#						fixed_handicap = spaces
-#				for i in range(fixed_handicap):
-#						board.place_stone(stars[i],black)
-#
-#				return spaces
+		# Capture enemy stones
+		move.player.captures += self.board.remove_dead_stones(move)
 
-def score_japanese(board, black, white, komi):
-	board.mark_territory()
-	territory = board.count_territory()
-	for player in (black,white):
-		if player not in territory:
-			territory[player] = 0
+		self.check_suicide(move.position, self.board)
+		self.check_ko(move, self.board, self.game.history)
 
-		player.score = territory[player] + player.captures
+		# Check for errors
+		if self.errors:
+			self.rollback()
+		else:
+			self.commit()
 
-	white.score += komi
+	def change_active_player(self):
+		'''N/A - teams not implemented yet'''
+		pass
+
+	def change_team(self):
+		'''Don't have teams yet; this changes player from black to white and vice versa'''
+		if self.game.next_player == self.game.black:
+			debug('white')
+			self.game.next_player = self.game.white
+		else:
+			debug('black')
+			self.game.next_player = self.game.black
+
+	def score_player(self, player, territory):
+		'''Calculate the score of a player at the end of the game'''
+		return score_japanese(player, territory)
+
+class FloatParameter(object):
+	def __init__(self,name,value=None,range=None):
+		self.name  = name
+		self.value = None
+		self.range = None
+		self.pattern = re.compile('-?\d+')
+
+	
+	def validate(self):
+		if self.value is None:
+			return False
+
+		if self.range is not None:
+			return self.range[0] < self.value < self.range[1]
+
+		return True
+
+# Get a logger for this module
+debug,info,warning,error = multilogger.logFunctions(__name__)

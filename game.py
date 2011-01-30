@@ -19,7 +19,6 @@ import string
 import rules
 import geometry
 import multilogger
-import gameErrors
 
 # Game states
 PLACE_HANDICAP = 0
@@ -58,7 +57,6 @@ class TwoPlayerGame(Observable):
 		info('Starting game')
 
 		Observable.__init__(self)
-		self.errors = gameErrors.ErrorList()
 		self.board = board
 
 		if ruleset:
@@ -72,55 +70,32 @@ class TwoPlayerGame(Observable):
 		if black_player is None:
 			black_player = Player('black','Black')
 		if white_player is None:
-			white_player = Player('black','Black')
+			white_player = Player('black','Black',komi=komi)
 
 		self.black = black_player
 		self.white = white_player
+		self.next_player = self.black
 		self.winner = None
+		self.state = PLACE_HANDICAP
 
-		if fixed_handicap or custom_handicap:
-			self.handicap = fixed_handicap + custom_handicap
+		self.ruleset.setup(self)
+
+	def start(self):
+		self.state = PLAY_GAME
+
+	def end(self):
+		if self.state != MARK_DEAD and self.winner is None:
+			self.state = MARK_DEAD
 		else:
-			self.handicap = 0
-
-		if fixed_handicap:
-			placed_stones = ruleset.place_handicap(fixed_handicap,self.board,self.black)
-			if placed_stones < fixed_handicap:
-				custom_handicap += fixed_handicap - placed_stones
-
-		if custom_handicap:
-			self.remaining_handicap = custom_handicap
-		else:
-			self.remaining_handicap = 0
-
-		# Black goes first, unless they have a handicap
-		if self.handicap and self.remaining_handicap == 0:
-			self.next_player = self.white
-		else:
-			self.next_player = self.black
-
-		# Extra points to compensate white for black going first
-		self.komi = komi
-
-		self._game_state = None
-		self._change_game_state()
+			self.state = GAME_OVER
 
 	def last_move(self):
 		'''Return the last move played.'''
 		if self.moves:
 			return self.moves[-1]
 
-	def change_player(self):
-		'''Toggle the next player.'''
-		if self.next_player == self.black:
-			self.next_player = self.white
-		else:
-			self.next_player = self.black
-
 	def play_move(self,position,player):
-		'''Attempt to play the next move.'''
-
-		self.errors.clear()
+		'''Attempt to play the next move or handicap stone.'''
 
 		if self.state in (GAME_OVER, MARK_DEAD):
 			raise GameOverError
@@ -130,35 +105,67 @@ class TwoPlayerGame(Observable):
 
 		move = Move(position, player)
 
-		# Check the move doesn't break the rules (will raise an exception if it does)
-		self.ruleset.check_rules(move,self.board,self.history)
+		# Attempt to play the move
+		if self.state == PLAY_GAME:
+			self.ruleset.play_move(move)
+		elif self.state == PLACE_HANDICAP:
+			self.ruleset.place_handicap(move)
 
-		# Play the move
-		self.board.place_stone(move)
-		player.captures += self.board.remove_dead_stones(move)
+		# Raise an exception if the move was invalid
+		# TODO: fix the GUI to display the list of errors instead of using exceptions
+		self.ruleset.fail()
 
-		# Save the board state and move for later
-		self.moves.append(move)
-		self.history.append(copy(self.board))
+		# Update the game state
+		if self.state == PLACE_HANDICAP:
+			self.end_place_handicap()
+		elif self.state == PLAY_GAME:
+			# Save the board state and move for later
+			self.moves.append(move)
+			self.history.append(copy(self.board))
 
-		# If this is a handicap stone, then it might still be the current player's turn
-		if not self.remaining_handicap:
-			self.change_player()
-		else:
-			self.remaining_handicap -= 1
+			self.end_turn()
 
-		self._change_game_state()
 		self.notify(move)
 
+	def end_turn(self):
+		'''Check for game over and change player'''
+		info('ending turn')
+		if self.ruleset.gameover():
+			self.end()
+		else:
+			# Change the active player of the current team
+			self.ruleset.change_active_player()
+
+			# Now it is the next team's turn
+			self.ruleset.change_team()
+
+	def end_place_handicap(self):
+		'''Check if handicap placement is complete and handle changing players'''
+		debug('end_place_handicap')
+		# Change the active player of the current team
+		self.ruleset.change_active_player()
+
+		if not self.ruleset.more_handicap(self.next_player):
+			# Now it is the next team's turn
+			self.ruleset.change_team()
+
+			# If everyone is done placing handicaps, start the game
+			if all(map(self.ruleset.more_handicap, (self.black,self.white))):
+				self.start()
+
 	def pass_turn(self):
-		'''Pass turn. If both players pass the game is over.'''
+		'''Pass turn.'''
 		if self.state in (GAME_OVER, MARK_DEAD):
 			raise GameOverError
 
+		if self.state == PLACE_HANDICAP:
+			# Do nothing
+			return
+
 		move = SpecialMove('pass',self.next_player)
 		self.moves.append(move)
-		self.change_player()
-		self._change_game_state()
+
+		self.end_turn()
 		self.notify(move)
 
 	def resign(self):
@@ -173,26 +180,28 @@ class TwoPlayerGame(Observable):
 
 		move = SpecialMove('resign',self.next_player)
 		self.moves.append(move)
-		self._change_game_state()
+		self.end()
 		self.notify(move)
 
 	def score(self):
 		'''Score the game.'''
 		debug('Scoring')
-		self.ruleset.score(self.board, self.black, self.white, self.komi)
+		self.board.mark_territory()
+		territory = self.board.count_territory()
+
+		for player in self.players:
+			self.ruleset.score_player(player, territory.setdefault(player,0))
+
+		debug('dsff')
 		if self.black.score > self.white.score:
 			self.winner = self.black
 		elif self.black.score < self.white.score:
 			self.winner = self.white
 		else:
 			self.winner = None # Jigo
-		self._game_state = GAME_OVER
+		debug('ending')
+		self.end()
 		self.notify(None)
-
-	def fail(self,reason='',detail=''):
-		self.errors.fail(reason,detail)
-		# Currently multiple errors aren't handled by the GUI which relies on exceptions to handle invalid moves etc. This is a temporary hack until I rewrite that.
-		self.errors.check() # raises an exception
 
 	@property
 	def players(self):
@@ -204,30 +213,10 @@ class TwoPlayerGame(Observable):
 		'''Integer representing the current game stage.'''
 		return self._game_state
 
-	def _change_game_state(self):
-		'''Update the game state after each move.'''
-		if self._game_state == GAME_OVER:
-			return
-
-		if self.winner:
-			debug('Game over')
-			self._game_state = GAME_OVER
-
-		# Mark dead stones
-		elif self.ruleset.game_over(self.moves,self.white,self.black):
-			debug('Mark dead stones')
-			self._game_state = MARK_DEAD
-
-		# Free placement of handicap stones
-		elif self.remaining_handicap:
-			self._game_state = PLACE_HANDICAP
-
-		else:
-			self._game_state = PLAY_GAME
 
 class Player:
 	'''Stores information about a player.'''
-	def __init__(self,color,name=None):
+	def __init__(self,color,name=None,komi=0):
 		self.color = color
 		if name:
 			self.name = name
@@ -235,6 +224,7 @@ class Player:
 			self.name = color
 		self.captures = 0
 		self.score = 0
+		self.komi = komi
 
 class Move:
 	'''Stores information about a move.'''

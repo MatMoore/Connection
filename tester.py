@@ -4,6 +4,7 @@
 from game import *
 from board import *
 from rules import *
+from gameErrors import *
 import unittest
 
 class GameTest(unittest.TestCase):
@@ -15,7 +16,7 @@ class MoveTest(GameTest):
 	def testBadMovePositions(self):
 		'''Check that moves played outside the board don't work'''
 		for position in ((-1,-1),(2,20)):
-			self.assertRaises(NonExistantPointError,self.game.play_move,position,self.game.black)
+			self.assertRaises(NonExistentPointError,self.game.play_move,position,self.game.black)
 
 	def testValidMove(self):
 		'''Check that the square is occupied by a stone after the move'''
