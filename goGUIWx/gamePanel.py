@@ -4,7 +4,7 @@ import geometry
 import sys
 import observer
 import multilogger
-import rules
+import gameErrors
 import wx
 
 class PlayerPanel(wx.Panel):
@@ -53,12 +53,12 @@ class PlayerPanel(wx.Panel):
 class BoardView(wx.Panel):
 	'''Show the board using wxPython'''
 
-	def __init__(self, grid, game, colors, parent=None, id=wx.ID_ANY, bgColour=(255,255,255), borderWidth=0.75, stoneSpacing = 0.1, pointSize = 0.2, highlightColor = (255,255,0)):
+	def __init__(self, game, colors, parent=None, id=wx.ID_ANY, bgColour=(255,255,255), borderWidth=0.75, stoneSpacing = 0.1, pointSize = 0.2, highlightColor = (255,255,0)):
 		'''The border width defines an empty space bordering the outer edges, given in grid points. Stone spacing is the width in grid points of the space between neighbouring stones. Point size is given as a fraction of stone size.'''
 		wx.Panel.__init__(self, parent, id, style=wx.FULL_REPAINT_ON_RESIZE)
 		self.SetBackgroundColour(bgColour)
 		self.colors = colors
-		self.grid = grid
+		self.game = game
 
 		# Assume that whenever a move is made, the board will change.
 		# This will trigger a full repaint.
@@ -80,8 +80,8 @@ class BoardView(wx.Panel):
 		self.highlightColor = highlightColor
 
 		# Size of the board in grid spacings. Assumes an origin of 0,0
-		self.grid_width = max([x for x,y in grid.points])
-		self.grid_height = max([y for x,y in grid.points])
+		self.grid_width = max([x for x,y in self.grid.points])
+		self.grid_height = max([y for x,y in self.grid.points])
 
 		self.borderWidth = borderWidth # width of border in grid units
 		self.BoardChanged() # Make sure the board is drawn
@@ -90,6 +90,10 @@ class BoardView(wx.Panel):
 			debug('Board view is using PaintDC')
 		else:
 			debug('Board view is using BufferedPaintDC')
+
+	@property
+	def grid(self):
+		return self.game.board.grid
 
 	def BoardChanged(self,*args):
 		self.Refresh() # trigger a paint event
@@ -192,7 +196,7 @@ class BoardView(wx.Panel):
 class PlayableBoard(BoardView):
 	'''Playable board using wxPython'''
 	def __init__(self, controller, colors, parent=None, id=wx.ID_ANY):
-		BoardView.__init__(self, controller.game.board.grid, controller.game, colors, parent, id)
+		BoardView.__init__(self, controller.game, colors, parent, id)
 		self.controller = controller
 		self.Bind(wx.EVT_LEFT_UP, self.MouseUp)
 		self.Bind(wx.EVT_LEFT_DOWN, self.MouseDown)
@@ -295,11 +299,11 @@ class PlayableBoard(BoardView):
 					debug('Not your turn')
 				except board.BoardError:
 					debug('Cannot place a stone there')
-				except rules.KoError:
+				except gameErrors.KoError:
 					debug('Invalid move (ko)')
-				except rules.SuicideError:
+				except gameErrors.SuicideError:
 					debug('Invalid move (suicide)')
-				except rules.InvalidMove:
+				except gameErrors.InvalidMove:
 					debug('Invalid move')
 
 			self._clicked = None
