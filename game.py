@@ -113,7 +113,7 @@ class TwoPlayerGame(Observable):
 
 		# Raise an exception if the move was invalid
 		# TODO: fix the GUI to display the list of errors instead of using exceptions
-		self.ruleset.fail()
+		self.ruleset.errors.check()
 
 		# Update the game state
 		if self.state == PLACE_HANDICAP:

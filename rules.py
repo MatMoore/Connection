@@ -27,6 +27,13 @@ class GoRules(object):
 		self.game = None
 		self.errors = gameErrors.ErrorList() # List of rule violations encountered during a move
 
+	def setup(self, game):
+		'''Start game. Black goes first, unless there was a handicap'''
+		self.game = game
+
+		# TODO: loop through teams handling fixed handicap, go to next player if so
+		game.start() # skip handicap placement
+
 	@property
 	def parameters(self):
 		'''Game parameters which must be set to start the game. This does not include komi or handicap as these are properties of the team.'''
@@ -40,27 +47,18 @@ class GoRules(object):
 		# Currently multiple errors aren't handled by the GUI which relies on exceptions to handle invalid moves etc. This is a temporary hack until I rewrite that.
 		self.errors.check()
 
-	@abstractmethod
-	def setup(self,game):
-		'''Must be called at the beginning of the game. Game state is GAME_HANDICAP.
-		If the game remains in this state then further moves played will be considered handicap stones and will not count as part of the game history.'''
-		self.game = game
-
-	@abstractmethod
 	def place_handicap(self, move):
-		'''Handle manual placement of handicap stones'''
-		pass
+		'''Handle manual placement of handicap stones in the same way as regular moves by default'''
+		self.play_move(move)
 
 	@abstractmethod
 	def gameover(self):
 		'''Return true if the game is over. If a winner is not set, the game will go into the MARK_DEAD state, and then the game will be scored.'''
 		pass
 
-	@abstractmethod
 	def more_handicap(self, player):
 		'''Called after accepting a new handicap stone. Returns true if the player has more handicap stones to place.'''
-
-		pass
+		return False
 
 	@abstractmethod
 	def play_move(self, move):
@@ -114,31 +112,8 @@ class GoRules(object):
 			return self.testboard
 
 
-class ScriptedRules(object):
-	'''TODO: rules object which follows scripted rules'''
-
-	def __init__(self, game, script_handler):
-		self.game = game
-		self.handler = script_handler
-
-
 class AGARules(GoRules):
 	'''American go association rules'''
-
-	def setup(self, game):
-		'''Start game. Black goes first, unless there was a handicap'''
-		self.game = game
-
-		# TODO: loop through teams handling fixed handicap, go to next player if so
-		game.start() # skip handicap placement
-
-	def place_handicap(self, move):
-		'''Handle manual placement of handicap stones in the same way as regular moves'''
-		self.play_move(move)
-
-	def more_handicap(self, player):
-		'''Called after accepting a new handicap stone. Returns true if the player has more handicap stones to place.'''
-		return 0
 
 	def gameover(self):
 		'''Returns true if the game is over, i.e. white then black passes consecutively. If a winner is not set, the game will go into the MARK_DEAD state, and then the game will be scored.'''
@@ -192,13 +167,13 @@ class AGARules(GoRules):
 		return score_japanese(player, territory)
 
 class FloatParameter(object):
+	'''Represents a game parameter which must be a valid floating point number'''
 	def __init__(self,name,value=None,range=None):
 		self.name  = name
 		self.value = None
 		self.range = None
 		self.pattern = re.compile('-?\d+')
 
-	
 	def validate(self):
 		if self.value is None:
 			return False
