@@ -54,10 +54,10 @@ class TwoPlayerGame(Observable):
 	'''
 
 	def __init__(self,board,black_player=None,white_player=None,fixed_handicap=0,komi=0,custom_handicap=0,ruleset=None):
-		info('Starting game')
 
 		Observable.__init__(self)
-		self.board = board
+		self._board = board
+		self._testboard = None
 
 		if ruleset:
 			self.ruleset = ruleset
@@ -78,9 +78,17 @@ class TwoPlayerGame(Observable):
 		self.winner = None
 		self.state = PLACE_HANDICAP
 
+		# Handle handicap, komi etc
 		self.ruleset.setup(self)
 
+		# If manual handicap stones need to be placed, change to that team;
+		# otherwise, begin the game
+		if not self.skip_completed_handicap():
+			self.start()
+
 	def start(self):
+		'''Start the game. All stones placed will be treated as regular moves and not handicap stones.'''
+		info('Starting game')
 		self.state = PLAY_GAME
 
 	def end(self):
@@ -89,6 +97,7 @@ class TwoPlayerGame(Observable):
 		else:
 			self.state = GAME_OVER
 
+	@property
 	def last_move(self):
 		'''Return the last move played.'''
 		if self.moves:
@@ -107,7 +116,7 @@ class TwoPlayerGame(Observable):
 
 		# Attempt to play the move
 		if self.state == PLAY_GAME:
-			self.ruleset.play_move(move)
+			self.ruleset.play_move(self, move)
 		elif self.state == PLACE_HANDICAP:
 			self.ruleset.place_handicap(move)
 
@@ -130,28 +139,42 @@ class TwoPlayerGame(Observable):
 	def end_turn(self):
 		'''Check for game over and change player'''
 		info('ending turn')
-		if self.ruleset.gameover():
+		if self.ruleset.gameover(self):
 			self.end()
 		else:
 			# Change the active player of the current team
-			self.ruleset.change_active_player()
+			self.ruleset.change_active_player(self)
 
 			# Now it is the next team's turn
-			self.ruleset.change_team()
+			self.ruleset.change_team(self)
 
 	def end_place_handicap(self):
 		'''Check if handicap placement is complete and handle changing players'''
 		debug('end_place_handicap')
+
 		# Change the active player of the current team
-		self.ruleset.change_active_player()
+		self.ruleset.change_active_player(self)
 
-		if not self.ruleset.more_handicap(self.next_player):
-			# Now it is the next team's turn
-			self.ruleset.change_team()
+		# If everyone is done placing handicaps, the next team begins the game
+		if not self.skip_completed_handicap():
+			self.ruleset.change_team(self)
+			self.start()
 
-			# If everyone is done placing handicaps, start the game
-			if all(map(self.ruleset.more_handicap, (self.black,self.white))):
-				self.start()
+	def skip_completed_handicap(self):
+		'''Change to the next team/player that has handicap stones to place. Returns false if there are none.'''
+		info('Waiting for handicap to be placed')
+
+		if not self.more_handicap():
+			return False
+
+		while not self.ruleset.more_handicap(self, self.next_player):
+			# Keep changing teams until one has handicap to place
+			self.ruleset.change_team(self)
+		return True
+
+	def more_handicap(self):
+		'''Check if there are any more handicap stones to be placed.'''
+		return any([self.ruleset.more_handicap(self, player) for player in (self.black,self.white)])
 
 	def pass_turn(self):
 		'''Pass turn.'''
@@ -212,6 +235,26 @@ class TwoPlayerGame(Observable):
 	def state(self):
 		'''Integer representing the current game stage.'''
 		return self._game_state
+
+	def begin(self):
+		'''Start a transactional operation on the board'''
+		self._testboard = copy(self._board)
+	
+	def rollback(self):
+		'''Revert a transactional operation on the board'''
+		self._testboard = None
+
+	def commit(self):
+		'''Commit a transactional operation on the board'''
+		self._board = self._testboard
+		self._testboard = None
+
+	@property
+	def board(self):
+		if self._testboard is None:
+			return self._board
+		else:
+			return self._testboard
 
 
 class Player:
