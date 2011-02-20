@@ -1,8 +1,9 @@
 '''Unit tests for parser'''
+
 import unittest
-import parser
-import lexer
-from parser import Node
+from scripting import parser
+from scripting import lexer
+from scripting.parser import Node
 
 script1 = '''score {
 	add (territory) (captures)
@@ -83,6 +84,3 @@ def suite():
 	suite1 = unittest.makeSuite(ParserTest)
 	alltests = unittest.TestSuite((suite1))
 	return alltests
-
-if __name__ == "__main__":
-	unittest.main()

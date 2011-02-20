@@ -1,4 +1,4 @@
-from parser import Node
+from scripting.parser import Node
 
 def syntaxTree():
 	'Iterator returning syntax trees representing an expression, the value of each expression, and a name for the test'

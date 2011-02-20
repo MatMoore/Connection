@@ -1,6 +1,6 @@
 '''Unit tests for lexer'''
 
-import lexer
+from scripting import lexer
 import unittest
 import ply.lex as lex
 
@@ -41,6 +41,3 @@ def suite():
 	suite1 = unittest.makeSuite(LexerTest)
 	alltests = unittest.TestSuite((suite1))
 	return alltests
-
-if __name__ == "__main__":
-	unittest.main()
