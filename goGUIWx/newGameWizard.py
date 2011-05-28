@@ -60,7 +60,7 @@ class NewGameWizard(wx.wizard.Wizard):
 		game_controller.begin_game(board.Board(grid))
 
 		# Show the game in a new window
-		colors = {black:(0,0,0), white:(200,200,200)}
+		colors = {black.team:(0,0,0), white.team:(200,200,200)}
 		frame = gamePanel.GamePanel(game_controller, colors)
 		frame.Show()
 

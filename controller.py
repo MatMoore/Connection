@@ -1,6 +1,7 @@
 '''This module provides a layer in between the GUI and the underlying game objects, which handles players' input.'''
 from observer import Observable
 import game
+import player
 import multilogger
 
 class Controller(Observable):
@@ -28,9 +29,9 @@ General usage:
 
 	def add_local_player(self, team, name):
 		'''Add a local player to the game.'''
-		player = game.Player(team, name)
-		self.local_players.append(player)
-		return player
+		p = player.PlayerSettings(team, name)
+		self.local_players.append(p)
+		return p
 
 	def add_remote_player(self, team, name):
 		'''Add a remote player to the game.'''
@@ -59,18 +60,10 @@ General usage:
 	# TODO: check we have the correct number of players before starting the game
 	def begin_game(self,board,fixed_handicap=0,komi=0,custom_handicap=0,ruleset=None):
 		'''Create a game between the players which have been added.'''
-		black_player = None
-		white_player = None
+		self.local_players = [player.Player(p) for p in self.local_players]
+		self.remote_players = [player.Player(p) for p in self.remote_players]
 
-		for i in (self.local_players + self.remote_players):
-			if i.color == 'black':
-				black_player = i
-				info('Black player is "%s"' % i.name)
-			elif i.color == 'white':
-				white_player = i
-				info('White player is "%s"' % i.name)
-
-		self.game = game.TwoPlayerGame(board,black_player,white_player,fixed_handicap,komi,custom_handicap,ruleset)
+		self.game = game.TwoPlayerGame(board,self.local_players+self.remote_players,fixed_handicap,komi,custom_handicap,ruleset)
 		self.game.register_listener(self.on_move)
 		self.on_move() # Needed to get the first "next player"
 

@@ -125,7 +125,7 @@ class BoardView(wx.Panel):
 			hoverPos,player = self._clicked
 		if hoverPos is not None:
 			x,y = self.GridToView(hoverPos)
-			color = self.colors[player]
+			color = self.colors[player.team]
 			gc.SetPen(wx.Pen("black", 0))
 			gc.SetBrush(wx.Brush(color))
 			gc.DrawEllipse(x-stoneSize/2, y-stoneSize/2, stoneSize, stoneSize)
@@ -136,9 +136,9 @@ class BoardView(wx.Panel):
 			value = self.grid.get_point(x,y)
 			x,y = self.GridToView(p)
 
-			if value is not None and value[0] in self.colors:
+			if value is not None and value[0].team in self.colors:
 				player, dead = value
-				gc.SetPen(wx.Pen(self.colors[player],0))
+				gc.SetPen(wx.Pen(self.colors[player.team],0))
 
 				if dead == board.DEAD_STONE:
 					# Draw dot underneath
@@ -146,11 +146,11 @@ class BoardView(wx.Panel):
 					gc.SetBrush(wx.Brush("black"))
 					gc.DrawEllipse(x-pointSize/2, y-pointSize/2, pointSize, pointSize)
 					# Draw transparent dead stone
-					r,g,b = self.colors[player]
+					r,g,b = self.colors[player.team]
 					gc.SetBrush(wx.Brush(wx.Colour(r,g,b,80)))
 					gc.DrawEllipse(x-stoneSize/2, y-stoneSize/2, stoneSize, stoneSize)
 				else:
-					gc.SetBrush(wx.Brush(self.colors[player]))
+					gc.SetBrush(wx.Brush(self.colors[player.team]))
 					gc.DrawEllipse(x-stoneSize/2, y-stoneSize/2, stoneSize, stoneSize)
 			elif p != hoverPos:
 				gc.SetPen(wx.Pen("black", 0))
@@ -299,12 +299,8 @@ class PlayableBoard(BoardView):
 					debug('Not your turn')
 				except board.BoardError:
 					debug('Cannot place a stone there')
-				except gameErrors.KoError:
-					debug('Invalid move (ko)')
-				except gameErrors.SuicideError:
-					debug('Invalid move (suicide)')
-				except gameErrors.InvalidMove:
-					debug('Invalid move')
+				except gameErrors.InvalidMove as e:
+					debug(e.errors)
 
 			self._clicked = None
 

@@ -17,6 +17,7 @@ from observer import Observable
 from copy import copy
 import string
 import rules
+import player
 import geometry
 import multilogger
 
@@ -53,7 +54,7 @@ class TwoPlayerGame(Observable):
 4. When all dead stones have been marked, call score to end the game (`GAME_OVER` state) and calculate who won.
 	'''
 
-	def __init__(self,board,black_player=None,white_player=None,fixed_handicap=0,komi=0,custom_handicap=0,ruleset=None):
+	def __init__(self,board,players=(),fixed_handicap=0,komi=0,custom_handicap=0,ruleset=None):
 
 		Observable.__init__(self)
 		self._board = board
@@ -67,14 +68,17 @@ class TwoPlayerGame(Observable):
 		self.history = [] # the board at all times in the past
 		self.moves = [] # the list of moves
 
-		if black_player is None:
-			black_player = Player('black','Black')
-		if white_player is None:
-			white_player = Player('black','Black',komi=komi)
+		if not players:
+			black_player = player.PlayerSettings('black','Black')
+			white_player = player.PlayerSettings('black','Black',komi=komi)
+			players = [player.Player(p, self) for p in (black_player, white_player)]
+		else:
+			for p in players:
+				p.game = self
 
-		self.black = black_player
-		self.white = white_player
-		self.next_player = self.black
+		self.players = players
+
+		self.next_player = self.players[0]
 		self.winner = None
 		self.state = PLACE_HANDICAP
 
@@ -87,7 +91,7 @@ class TwoPlayerGame(Observable):
 			self.start()
 
 	def start(self):
-		'''Start the game. All stones placed will be treated as regular moves and not handicap stones.'''
+		'''Start the game. All stones placed will henceforth be treated as regular moves and not handicap stones.'''
 		info('Starting game')
 		self.state = PLAY_GAME
 
@@ -121,7 +125,6 @@ class TwoPlayerGame(Observable):
 			self.ruleset.place_handicap(move)
 
 		# Raise an exception if the move was invalid
-		# TODO: fix the GUI to display the list of errors instead of using exceptions
 		self.ruleset.errors.check()
 
 		# Update the game state
@@ -174,7 +177,7 @@ class TwoPlayerGame(Observable):
 
 	def more_handicap(self):
 		'''Check if there are any more handicap stones to be placed.'''
-		return any([self.ruleset.more_handicap(self, player) for player in (self.black,self.white)])
+		return any([self.ruleset.more_handicap(self, player) for player in self.active_players])
 
 	def pass_turn(self):
 		'''Pass turn.'''
@@ -193,43 +196,44 @@ class TwoPlayerGame(Observable):
 
 	def resign(self):
 		'''Resign the game.'''
+		move = SpecialMove('resign',self.next_player)
+		self.next_player.resign()
+
+		if len(self.active_players) > 1:
+			return
+
 		if self.state in (GAME_OVER, MARK_DEAD):
 			raise GameOverError
 
-		if self.next_player == self.black:
-			self.winner = self.white
-		else:
-			self.winner = self.black
+		self.winner = self.active_players[0]
 
-		move = SpecialMove('resign',self.next_player)
 		self.moves.append(move)
 		self.end()
 		self.notify(move)
+
+	def player_territory(self, player):
+		'''The territory belonging to a player'''
+		return self.board.player_territory(player)
+
+	def score_player(self, player):
+		'''The score for a player'''
+		return self.ruleset.score_player(player)
 
 	def score(self):
 		'''Score the game.'''
 		debug('Scoring')
 		self.board.mark_territory()
-		territory = self.board.count_territory()
 
-		for player in self.players:
-			self.ruleset.score_player(player, territory.setdefault(player,0))
+		self.winner = max(self.players, key=self.score_player)
 
-		debug('dsff')
-		if self.black.score > self.white.score:
-			self.winner = self.black
-		elif self.black.score < self.white.score:
-			self.winner = self.white
-		else:
-			self.winner = None # Jigo
 		debug('ending')
 		self.end()
 		self.notify(None)
 
 	@property
-	def players(self):
-		'''A tuple of the black and white player objects.'''
-		return self.black,self.white
+	def active_players(self):
+		'''A list of players who haven't resigned'''
+		return filter(lambda p: not p.resigned, self.players)
 
 	@property
 	def state(self):
@@ -257,18 +261,6 @@ class TwoPlayerGame(Observable):
 			return self._testboard
 
 
-class Player:
-	'''Stores information about a player.'''
-	def __init__(self,color,name=None,komi=0):
-		self.color = color
-		if name:
-			self.name = name
-		else:
-			self.name = color
-		self.captures = 0
-		self.score = 0
-		self.komi = komi
-
 class Move:
 	'''Stores information about a move.'''
 	def __init__(self,position,player):
@@ -285,7 +277,7 @@ class Move:
 		letters = [l for l in string.ascii_uppercase if l is not 'I']
 		x = letters[d]
 		y = self.position[1] + 1
-		return '%s %s%d'%(self.player.color,x,y)
+		return '%s %s%d'%(self.player.team,x,y)
 
 class SpecialMove:
 	'''Represents a pass/resign move.'''
@@ -295,7 +287,7 @@ class SpecialMove:
 		self.position = (-1,-1)
 
 	def __str__(self):
-		return '%s %s'%(self.player.color,self.type)
+		return '%s %s'%(self.player.team,self.type)
 
 # Get a logger for this module
 debug,info,warning,error = multilogger.logFunctions(__name__)

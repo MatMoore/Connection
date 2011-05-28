@@ -3,8 +3,12 @@
 
 import unittest
 from board import *
-from game import Player,Move
+from game import Move
 import copy
+
+class Player(object):
+	def __init__(self, bla):
+		self.bla = bla
 
 class BoardSizeTest(unittest.TestCase):
 	'''Check that different sized boards can be created'''

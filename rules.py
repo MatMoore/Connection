@@ -7,14 +7,15 @@ import game
 import board
 import multilogger
 from abc import ABCMeta,abstractmethod
+from itertools import cycle
 
 # TODO: make these a property of the board, and rewrite fixed handicap handling
 nine_star_points = ((3,7),(7,3),(3,3),(7,7),(5,5))
 thirteen_star_points = ((4,4), (9,9), (4,9), (9,4), (7,7),(4,7),(9,7),(7,4),(7,9))
 nineteen_star_points = ((4,4),(16,16),(4,16),(16,5),(10,10),(4,10),(16,10),(10,4),(16,4))
 
-def score_japanese(player, territory):
-	player.score = territory + player.captures + player.komi
+def score_japanese(player):
+	player.score = len(player.territory) + player.captures + player.komi
 
 #TODO: provide means to serialize a rules object (i.e. their parameters and class/script file) for saving to file and hosting network games
 class GoRules(object):
@@ -73,7 +74,7 @@ class GoRules(object):
 		pass
 
 	@abstractmethod
-	def score_player(self, player, territory):
+	def score_player(self, player):
 		'''Calculate the score of a player at the end of the game.'''
 		pass
 
@@ -97,9 +98,8 @@ class AGARules(GoRules):
 		history = game.moves
 		return len(history) >= 2 \
 			and history[-1].type == 'pass' \
-			and history[-1].player == game.white \
 			and history[-2].type == 'pass' \
-			and history[-2].player == game.black
+			and history[-2].player.team == 'black'
 
 	def play_move(self, game, move):
 		'''Handle a normal game move by the current player.'''
@@ -132,16 +132,16 @@ class AGARules(GoRules):
 
 	def change_team(self, game):
 		'''Don't have teams yet; this changes player from black to white and vice versa'''
-		if game.next_player == game.black:
-			debug('white')
-			game.next_player = game.white
-		else:
-			debug('black')
-			game.next_player = game.black
+		current = game.next_player
+		players = cycle(game.active_players)
+		p = None
+		while p is not current:
+			p = players.next()
+		game.next_player = players.next()
 
-	def score_player(self, player, territory):
+	def score_player(self, player):
 		'''Calculate the score of a player at the end of the game'''
-		return score_japanese(player, territory)
+		return score_japanese(player)
 
 
 class RuleParameter(object):

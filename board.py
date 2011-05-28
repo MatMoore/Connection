@@ -7,6 +7,9 @@ This module defines some constants which are used to distinguish the nature of t
 		Represents a live stone
 	`board.DEAD_STONE`
 		Represents a dead stone
+
+TODO:
+	move the territory counter to a seperate class
 '''
 from copy import copy,deepcopy
 from observer import Observable
@@ -106,6 +109,10 @@ class Board(Observable):
 				else:
 					result[player] += 1
 		return result
+
+	def player_territory(self, player):
+		'''Return the territory for a player'''
+		return [pos for pos,owner in self.territory.iteritems() if owner is player]
 
 	def set_territory(self, pos, player=None):
 		'''Mark a particular point as belong to a player.'''
