@@ -30,6 +30,7 @@ General usage:
 	def add_local_player(self, team, name):
 		'''Add a local player to the game.'''
 		p = player.PlayerSettings(team, name)
+		p = player.Player(p)
 		self.local_players.append(p)
 		return p
 
@@ -60,8 +61,6 @@ General usage:
 	# TODO: check we have the correct number of players before starting the game
 	def begin_game(self,board,fixed_handicap=0,komi=0,custom_handicap=0,ruleset=None):
 		'''Create a game between the players which have been added.'''
-		self.local_players = [player.Player(p) for p in self.local_players]
-		self.remote_players = [player.Player(p) for p in self.remote_players]
 
 		self.game = game.TwoPlayerGame(board,self.local_players+self.remote_players,fixed_handicap,komi,custom_handicap,ruleset)
 		self.game.register_listener(self.on_move)
