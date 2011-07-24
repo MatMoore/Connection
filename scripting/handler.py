@@ -15,10 +15,10 @@ def run(script,debug=False):
 	tree = p.parse(script,lexer=l,debug=debug)
 	if tree is None:
 		error('Cannot parse script')
-		return
+		raise Exception('Cannot parse script')
 	if debug:
 		print tree.indent()
-	Handler(tree)
+	return Handler(tree)
 
 def flatten(li):
 	'''Flatten li into a single list, allowing lists to be automatically unpacked when they are passed as arguments to functions which don't operate on lists'''
@@ -36,6 +36,7 @@ class Handler(object):
 		self.constants = {} # Values set by script writer
 		self.variables = {} # Variables set as part of a game action
 		self._each_stack = [] # Stack of "next" values populated while looping with the each function
+		self.actions = {}
 
 		self._handle(syntaxTree)
 
@@ -53,9 +54,13 @@ class Handler(object):
 	def inputs(self):
 		pass
 
+	def _handle_action(self,node,game,player):
+		name = node.leaf
+		self.actions[name] = node
+
 	def run_action(self,action,game,player=None):
 		'''Run a game action'''
-		pass
+		self._handle_statement_list(self.actions[action])
 
 	def _handle_declaration_list(self,node,game=None,player=None):
 		for i in node.children:

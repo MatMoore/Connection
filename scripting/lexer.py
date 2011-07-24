@@ -14,7 +14,12 @@ tokens = (
 	'FLOAT',
 	'ASSIGN',
 	'END',
+	'ACTION',
 )
+
+def t_ACTION(t):
+	'''action'''
+	return t
 
 def t_FLOAT(t):
 	'''-?\d+\.\d*'''
@@ -37,7 +42,7 @@ def t_VARIABLE(t):
 	return t
 
 def t_NAME(t):
-	'''[a-zA-Z_][a-zA-Z0-9_]*'''
+	'''[a-zA-Z_][a-zA-Z0-9_?]*'''
 	return t
 
 def t_ASSIGN(t):

@@ -50,7 +50,7 @@ class GoRules(object):
 		self.play_move(move)
 
 	@abstractmethod
-	def gameover(self):
+	def gameover(self, game):
 		'''Return true if the game is over. If a winner is not set, players will be able to mark dead stones before the game is scored.'''
 		pass
 

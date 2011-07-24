@@ -131,6 +131,10 @@ def p_block(p):
 	'''block : LBRACE statement-list RBRACE'''
 	p[0] = Node('block',[p[2]])
 
+def p_actiondef(p):
+	'''actiondef : ACTION NAME NEWLINE block'''
+	p[0] = Node('action',[p4],p[1])
+
 def p_error(p):
 	if p is None:
 		print 'Unexpected end of file'
