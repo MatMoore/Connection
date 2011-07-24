@@ -31,6 +31,16 @@ def flatten(li):
 	return new
 
 class Handler(object):
+	'''Handle a script. This should be initialised from a script file, then any declared inputs should be set before starting the game. During the game run_action will be called with the relevent action, and the main game object. The allowed actions are:
+
+score - calculate the score at the end of the game
+move - a point has been chosen during a player's turn. use "here" function to obtain the point
+pre_move - called before a player makes their move
+post_move - called after a player makes their move
+gameover - called after each turn. Must return true if the game is complete
+
+
+'''
 	def __init__(self,syntaxTree):
 		self.inputs = [] # Values set by user
 		self.constants = {} # Values set by script writer
@@ -40,7 +50,7 @@ class Handler(object):
 
 		self._handle(syntaxTree)
 
-	def _handle(self,node,game=None,player=None):
+	def _handle(self,node,game=None):
 		'''Handle a node of the syntax tree'''
 		try:
 			method = getattr(self,'_handle_'+node.type)
@@ -49,26 +59,26 @@ class Handler(object):
 			warning('No handler "'+'_handle_'+node.type + '"')
 			return None
 
-		return method(node,game,player)
+		return method(node,game=None)
 
 	def inputs(self):
 		pass
 
-	def _handle_action(self,node,game,player):
+	def _handle_action(self,node,game=None):
 		name = node.leaf
 		self.actions[name] = node
 
-	def run_action(self,action,game,player=None):
+	def run_action(self,action,game=None):
 		'''Run a game action'''
 		self._handle_statement_list(self.actions[action])
 
-	def _handle_declaration_list(self,node,game=None,player=None):
+	def _handle_declaration_list(self,node,game=None):
 		for i in node.children:
-			self._handle(i,game,player)
+			self._handle(i,game=None)
 
 		return None
 
-	def _handle_declaration(self,node,game=None,player=None):
+	def _handle_declaration(self,node,game=None):
 		assert node.leaf is not None
 		assert len(node.children) == 1
 
@@ -78,29 +88,29 @@ class Handler(object):
 
 		return None
 
-	def _handle_statement_list(self,node,game=None,player=None):
+	def _handle_statement_list(self,node,game=None):
 		'''Handle a list of statements. The value is the value of the last expression, or None if there weren't any.'''
 		assert len(node.children)
 
 		value = None
 
 		for i in node.children:
-			new_value = self._handle(i,game,player)
+			new_value = self._handle(i,game=None)
 			if new_value is not None:
 				value = new_value
 
 		return value
 
-	def _handle_literal(self,node,game=None,player=None):
+	def _handle_literal(self,node,game=None):
 		assert node.leaf is not None
 		return node.leaf
 
-	def _handle_assignment(self,node,game=None,player=None):
+	def _handle_assignment(self,node,game=None):
 		assert node.leaf is not None
 		assert len(node.children) == 1
 
 		name = node.leaf
-		value = self._handle(node.children[0],game,player)
+		value = self._handle(node.children[0],game=None)
 
 		if game is None:
 			if name in self.constants:
@@ -113,7 +123,7 @@ class Handler(object):
 
 		return value
 
-	def _handle_functioncall(self,node,game=None,player=None):
+	def _handle_functioncall(self,node,game=None):
 		assert isinstance(node.leaf, str)
 
 		try:
@@ -123,12 +133,12 @@ class Handler(object):
 
 		return method(node, game)
 
-	def _handle_block(self,node,game=None,player=None):
+	def _handle_block(self,node,game=None):
 		assert len(node.children) == 1
 
-		return self._handle(node.children[0],game,player)
+		return self._handle(node.children[0],game=None)
 
-	def _handle_variable(self,node,game=None,player=None):
+	def _handle_variable(self,node,game=None):
 		'''Get the value of a variable. Note that variables defined inside actions do not persist between turns.'''
 		assert isinstance(node.leaf,str)
 		assert len(node.children) == 0
